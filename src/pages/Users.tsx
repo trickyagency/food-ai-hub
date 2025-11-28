@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -20,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Trash2, Shield } from "lucide-react";
+import { Trash2, Shield, UserPlus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +55,11 @@ const Users = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("viewer");
+  const [isAddingUser, setIsAddingUser] = useState(false);
 
   useEffect(() => {
     fetchCurrentUserRole();
@@ -147,11 +155,53 @@ const Users = () => {
     }
   };
 
+  const addNewUser = async () => {
+    if (!newUserEmail || !newUserPassword) {
+      toast.error("Email and password are required");
+      return;
+    }
+
+    setIsAddingUser(true);
+    try {
+      // Create the user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUserEmail,
+        password: newUserPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        }
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("User creation failed");
+
+      // Assign role
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert([{ user_id: authData.user.id, role: newUserRole as any }]);
+
+      if (roleError) throw roleError;
+
+      toast.success("User created successfully");
+      setIsAddUserOpen(false);
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserRole("viewer");
+      fetchUsers();
+    } catch (error: any) {
+      toast.error("Failed to create user: " + error.message);
+    } finally {
+      setIsAddingUser(false);
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "owner":
         return "default";
       case "admin":
+        return "secondary";
+      case "manager":
         return "secondary";
       case "staff":
         return "outline";
@@ -187,9 +237,82 @@ const Users = () => {
   return (
     <DashboardLayout>
       <div className="p-8 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground">Manage user roles and permissions</p>
+        <div className="flex justify-between items-start">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold text-foreground">User Management</h1>
+            <p className="text-muted-foreground">Manage user roles and permissions</p>
+          </div>
+          
+          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New User</DialogTitle>
+                <DialogDescription>
+                  Create a new user account with a specific role
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="user@example.com"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    disabled={isAddingUser}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Temporary Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    disabled={isAddingUser}
+                    minLength={6}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select
+                    value={newUserRole}
+                    onValueChange={setNewUserRole}
+                    disabled={isAddingUser}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentUserRole === "owner" && (
+                        <>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </>
+                      )}
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="staff">Staff</SelectItem>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={addNewUser} 
+                  disabled={isAddingUser}
+                  className="w-full"
+                >
+                  {isAddingUser ? "Creating..." : "Create User"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Card>
@@ -234,6 +357,7 @@ const Users = () => {
                                   <SelectItem value="admin">Admin</SelectItem>
                                 </>
                               )}
+                              <SelectItem value="manager">Manager</SelectItem>
                               <SelectItem value="staff">Staff</SelectItem>
                               <SelectItem value="viewer">Viewer</SelectItem>
                             </SelectContent>

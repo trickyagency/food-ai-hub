@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
-import { LayoutDashboard, Upload, LogOut, Users, LucideIcon } from "lucide-react";
+import { LayoutDashboard, Upload, LogOut, Users, Shield, LucideIcon } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -44,6 +44,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   if (userRole === "owner" || userRole === "admin") {
     navItems.push({ icon: Users, label: "Users", path: "/users" });
   }
+  
+  navItems.push({ icon: Shield, label: "Security", path: "/security" });
 
   const handleLogout = async () => {
     await logout();
