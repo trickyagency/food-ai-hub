@@ -9,6 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 const Index = () => {
   const { role } = useUserRole();
 
+  // Define what each role can see
+  const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
+  const canSeeCallLogs = role !== "viewer"; // Viewers have most limited access
+
   return (
     <DashboardLayout>
       <div className="p-8 space-y-8">
@@ -23,8 +27,9 @@ const Index = () => {
           )}
         </div>
 
-        {/* Metrics Grid - All users can see basic metrics */}
+        {/* Metrics Grid - Different views based on role */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Basic Metrics - All users can see */}
           <MetricCard
             title="Total Calls"
             value="1,247"
@@ -40,53 +45,61 @@ const Index = () => {
             trend="up"
           />
           
-          {/* Duration visible to Manager, Admin, Owner */}
-          <ProtectedFeature
-            allowedRoles={["owner", "admin", "manager"]}
-            fallback={
+          {/* Advanced Metrics - Manager, Admin, Owner only */}
+          {canSeeAdvancedMetrics ? (
+            <>
+              <MetricCard
+                title="Avg. Duration"
+                value="3m 24s"
+                change="-0.8% from last week"
+                icon={Clock}
+                trend="down"
+              />
+              <MetricCard
+                title="Conversion"
+                value="67.8%"
+                change="+5.1% from last week"
+                icon={TrendingUp}
+                trend="up"
+              />
+            </>
+          ) : (
+            <>
               <Card>
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground text-center">
-                    Limited access
+                    Contact admin for access
                   </p>
                 </CardContent>
               </Card>
-            }
-          >
-            <MetricCard
-              title="Avg. Duration"
-              value="3m 24s"
-              change="-0.8% from last week"
-              icon={Clock}
-              trend="down"
-            />
-          </ProtectedFeature>
-
-          {/* Conversion visible to Manager, Admin, Owner */}
-          <ProtectedFeature
-            allowedRoles={["owner", "admin", "manager"]}
-            fallback={
               <Card>
                 <CardContent className="p-6">
                   <p className="text-sm text-muted-foreground text-center">
-                    Limited access
+                    Contact admin for access
                   </p>
                 </CardContent>
               </Card>
-            }
-          >
-            <MetricCard
-              title="Conversion"
-              value="67.8%"
-              change="+5.1% from last week"
-              icon={TrendingUp}
-              trend="up"
-            />
-          </ProtectedFeature>
+            </>
+          )}
         </div>
 
-        {/* Call Logs - All authenticated users can see */}
-        <CallLogTable />
+        {/* Call Logs - Restricted for viewers */}
+        {canSeeCallLogs ? (
+          <CallLogTable />
+        ) : (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center space-y-2">
+                <p className="text-muted-foreground">
+                  You don't have permission to view call logs
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Contact your administrator for access
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
