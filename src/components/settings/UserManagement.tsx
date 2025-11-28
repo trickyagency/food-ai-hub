@@ -53,7 +53,6 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("viewer");
   const [isAddingUser, setIsAddingUser] = useState(false);
 
@@ -139,34 +138,54 @@ const UserManagement = () => {
   };
 
   const addNewUser = async () => {
-    if (!newUserEmail || !newUserPassword) {
-      toast.error("Email and password are required");
+    if (!newUserEmail) {
+      toast.error("Email is required");
       return;
     }
 
     setIsAddingUser(true);
     try {
+      // Create user with a random temporary password they won't use
+      const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16);
+      
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newUserEmail,
-        password: newUserPassword,
+        password: tempPassword,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            setup_required: true
+          }
         }
       });
 
       if (authError) throw authError;
       if (!authData.user) throw new Error("User creation failed");
 
+      // Assign role
       const { error: roleError } = await supabase
         .from("user_roles")
         .insert([{ user_id: authData.user.id, role: newUserRole as any }]);
 
       if (roleError) throw roleError;
 
-      toast.success("User created successfully");
+      // Send password reset email for account setup
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        newUserEmail,
+        {
+          redirectTo: `${window.location.origin}/auth`,
+        }
+      );
+
+      if (resetError) {
+        console.error("Failed to send setup email:", resetError);
+        toast.warning("User created but setup email failed. Please resend manually.");
+      } else {
+        toast.success("User created! Setup email sent to " + newUserEmail);
+      }
+
       setIsAddUserOpen(false);
       setNewUserEmail("");
-      setNewUserPassword("");
       setNewUserRole("viewer");
       fetchUsers();
     } catch (error: any) {
@@ -215,7 +234,7 @@ const UserManagement = () => {
               <DialogHeader>
                 <DialogTitle>Add New User</DialogTitle>
                 <DialogDescription>
-                  Create a new user account with specific permissions
+                  User will receive an email to set up their account and password
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
@@ -229,18 +248,9 @@ const UserManagement = () => {
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     disabled={isAddingUser}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Temporary Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                    disabled={isAddingUser}
-                    minLength={6}
-                  />
+                  <p className="text-xs text-muted-foreground">
+                    A setup email will be sent to this address
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
