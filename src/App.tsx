@@ -7,8 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
-import Users from "./pages/Users";
-import Security from "./pages/Security";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -40,18 +39,10 @@ const App = () => (
               }
             />
             <Route
-              path="/users"
+              path="/settings"
               element={
                 <ProtectedRoute>
-                  <Users />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/security"
-              element={
-                <ProtectedRoute>
-                  <Security />
+                  <Settings />
                 </ProtectedRoute>
               }
             />
