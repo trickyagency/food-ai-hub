@@ -1,0 +1,503 @@
+import { useState, useCallback, useEffect } from "react";
+import { useDropzone } from "react-dropzone";
+import { supabase } from "@/integrations/supabase/client";
+import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2, Download, Edit2, Eye } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { z } from "zod";
+import { auditLog } from "@/lib/auditLog";
+
+const WEBHOOK_URL = "https://digitalautomators.app.n8n.cloud/webhook-test/5914daf9-cbd1-40e2-81d0-8144944abcfc";
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
+
+const fileSchema = z.object({
+  name: z.string().max(255, "File name must be less than 255 characters"),
+  size: z.number().max(MAX_FILE_SIZE, "File size must be less than 200MB"),
+  type: z.string().refine(
+    (type) => type === 'application/pdf' || 
+              type === 'application/json' || 
+              type === 'text/csv' ||
+              type === 'application/vnd.ms-excel' ||
+              type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+              type === 'text/plain',
+    "Invalid file type. Only PDF, JSON, CSV, Excel, and TXT files are allowed"
+  ),
+});
+
+interface UploadedFile {
+  file: File;
+  status: "pending" | "uploading" | "success" | "error";
+  progress: number;
+}
+
+interface FileRecord {
+  id: string;
+  file_name: string | null;
+  size: number | null;
+  mime_type: string | null;
+  storage_path: string;
+  created_at: string | null;
+  user_id: string;
+}
+
+const DatabaseFileManager = () => {
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [storedFiles, setStoredFiles] = useState<FileRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; file: FileRecord | null }>({ open: false, file: null });
+  const [newFileName, setNewFileName] = useState("");
+  const [previewDialog, setPreviewDialog] = useState<{ open: boolean; file: FileRecord | null; content: string }>({ 
+    open: false, 
+    file: null, 
+    content: "" 
+  });
+
+  useEffect(() => {
+    fetchStoredFiles();
+  }, []);
+
+  const fetchStoredFiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("files")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setStoredFiles(data || []);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+      toast.error("Failed to load files");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    if (rejectedFiles.length > 0) {
+      rejectedFiles.forEach(({ file, errors }) => {
+        errors.forEach((error: any) => {
+          toast.error(`${file.name}: ${error.message}`);
+        });
+      });
+    }
+
+    const validFiles: File[] = [];
+    acceptedFiles.forEach(file => {
+      try {
+        fileSchema.parse({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
+        validFiles.push(file);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          toast.error(`${file.name}: ${error.errors[0].message}`);
+        }
+      }
+    });
+
+    const newFiles = validFiles.map(file => ({
+      file,
+      status: "pending" as const,
+      progress: 0,
+    }));
+    setFiles(prev => [...prev, ...newFiles]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/json': ['.json'],
+      'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/plain': ['.txt'],
+    },
+    maxSize: MAX_FILE_SIZE,
+  });
+
+  const uploadFile = async (index: number) => {
+    const fileData = files[index];
+    setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "uploading" as const } : f));
+
+    const formData = new FormData();
+    formData.append('file', fileData.file);
+
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "success" as const, progress: 100 } : f));
+        toast.success(`${fileData.file.name} uploaded successfully`);
+        
+        // Refresh the file list
+        setTimeout(() => {
+          fetchStoredFiles();
+          setFiles(prev => prev.filter((_, i) => i !== index));
+        }, 1000);
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+      toast.error(`Failed to upload ${fileData.file.name}`);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadAll = () => {
+    files.forEach((file, index) => {
+      if (file.status === "pending") {
+        uploadFile(index);
+      }
+    });
+  };
+
+  const handleDownload = async (file: FileRecord) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("database-files")
+        .download(file.storage_path);
+
+      if (error) throw error;
+
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.file_name || "download";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success(`Downloaded ${file.file_name}`);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      toast.error("Failed to download file");
+    }
+  };
+
+  const handleDelete = async (file: FileRecord) => {
+    if (!confirm(`Are you sure you want to delete ${file.file_name}?`)) return;
+
+    try {
+      const { error: storageError } = await supabase.storage
+        .from("database-files")
+        .remove([file.storage_path]);
+
+      if (storageError) throw storageError;
+
+      const { error: dbError } = await supabase
+        .from("files")
+        .delete()
+        .eq("id", file.id);
+
+      if (dbError) throw dbError;
+
+      await auditLog.fileDeleted(file.file_name || "Unnamed file", file.id);
+
+      setStoredFiles(storedFiles.filter((f) => f.id !== file.id));
+      toast.success(`Deleted ${file.file_name}`);
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      toast.error("Failed to delete file");
+    }
+  };
+
+  const openRenameDialog = (file: FileRecord) => {
+    setRenameDialog({ open: true, file });
+    setNewFileName(file.file_name || "");
+  };
+
+  const handleRename = async () => {
+    if (!renameDialog.file || !newFileName.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from("files")
+        .update({ file_name: newFileName.trim() })
+        .eq("id", renameDialog.file.id);
+
+      if (error) throw error;
+
+      setStoredFiles(storedFiles.map(f => 
+        f.id === renameDialog.file?.id ? { ...f, file_name: newFileName.trim() } : f
+      ));
+      
+      toast.success("File renamed successfully");
+      setRenameDialog({ open: false, file: null });
+      setNewFileName("");
+    } catch (error) {
+      console.error("Error renaming file:", error);
+      toast.error("Failed to rename file");
+    }
+  };
+
+  const handlePreview = async (file: FileRecord) => {
+    // Only preview text-based files
+    const textTypes = ['text/plain', 'application/json', 'text/csv'];
+    if (!textTypes.includes(file.mime_type || "")) {
+      toast.error("Preview is only available for text, JSON, and CSV files");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("database-files")
+        .download(file.storage_path);
+
+      if (error) throw error;
+
+      const text = await data.text();
+      setPreviewDialog({ open: true, file, content: text });
+    } catch (error) {
+      console.error("Error previewing file:", error);
+      toast.error("Failed to preview file");
+    }
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "Unknown size";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Unknown date";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Upload Section */}
+      <Card className="bg-gradient-card border-border/50 shadow-elegant">
+        <CardHeader>
+          <CardTitle className="text-foreground">Upload Database Files</CardTitle>
+          <CardDescription>Upload your food business data files to sync with the AI agent (Max 200MB)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-300 ${
+              isDragActive
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/50 hover:bg-primary/5"
+            }`}
+          >
+            <input {...getInputProps()} />
+            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            {isDragActive ? (
+              <p className="text-foreground font-medium">Drop the files here...</p>
+            ) : (
+              <>
+                <p className="text-foreground font-medium mb-2">Drag & drop files here, or click to select</p>
+                <p className="text-sm text-muted-foreground">Supports: PDF, JSON, CSV, Excel, TXT (Max 200MB)</p>
+              </>
+            )}
+          </div>
+
+          {files.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{files.length} file(s) selected</p>
+                <Button onClick={uploadAll} size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  Upload All
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                {files.map((fileData, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border"
+                  >
+                    <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{fileData.file.name}</p>
+                      <p className="text-xs text-muted-foreground">{formatFileSize(fileData.file.size)}</p>
+                    </div>
+                    {fileData.status === "success" && (
+                      <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                    )}
+                    {fileData.status === "error" && (
+                      <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                    )}
+                    {fileData.status === "uploading" && (
+                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    )}
+                    {fileData.status === "pending" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeFile(index)}
+                        className="flex-shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* File Management Section */}
+      <Card className="bg-gradient-card border-border/50 shadow-elegant">
+        <CardHeader>
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" />
+            Manage Database Files
+          </CardTitle>
+          <CardDescription>
+            View, download, rename, preview, and delete uploaded database files
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-center text-muted-foreground py-8">Loading files...</p>
+          ) : storedFiles.length === 0 ? (
+            <div className="flex flex-col items-center gap-4 py-8 text-muted-foreground">
+              <FileText className="h-12 w-12" />
+              <div className="text-center space-y-2">
+                <p className="text-lg font-medium">No files uploaded yet</p>
+                <p className="text-sm">Upload your first database file to get started</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {storedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="flex items-center gap-3 p-4 rounded-lg bg-card border border-border hover:border-primary/30 transition-all duration-200"
+                >
+                  <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {file.file_name || "Unnamed file"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(file.size)} • {formatDate(file.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handlePreview(file)}
+                      className="hover:bg-primary/10 hover:text-primary"
+                      title="Preview file"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openRenameDialog(file)}
+                      className="hover:bg-primary/10 hover:text-primary"
+                      title="Rename file"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDownload(file)}
+                      className="hover:bg-primary/10 hover:text-primary"
+                      title="Download file"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(file)}
+                      className="hover:bg-destructive/10 hover:text-destructive"
+                      title="Delete file"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialog.open} onOpenChange={(open) => setRenameDialog({ open, file: null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename File</DialogTitle>
+            <DialogDescription>
+              Enter a new name for the file
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              placeholder="Enter new file name"
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleRename();
+                }
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setRenameDialog({ open: false, file: null })}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleRename}>
+                Rename
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewDialog.open} onOpenChange={(open) => setPreviewDialog({ open, file: null, content: "" })}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>File Preview: {previewDialog.file?.file_name}</DialogTitle>
+            <DialogDescription>
+              {previewDialog.file?.mime_type} • {formatFileSize(previewDialog.file?.size || 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 overflow-auto max-h-[60vh]">
+            <pre className="text-sm text-foreground whitespace-pre-wrap bg-muted p-4 rounded-lg">
+              {previewDialog.content}
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default DatabaseFileManager;
