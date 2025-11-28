@@ -1,15 +1,18 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Shield, Users as UsersIcon } from "lucide-react";
+import { User, Shield, Users as UsersIcon, FileText, Bell } from "lucide-react";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import UserManagement from "@/components/settings/UserManagement";
+import AuditLogViewer from "@/components/settings/AuditLogViewer";
+import EmailNotifications from "@/components/settings/EmailNotifications";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Settings = () => {
-  const { canManageUsers } = useUserRole();
+  const { canManageUsers, role } = useUserRole();
   const [activeTab, setActiveTab] = useState("profile");
+  const isAdminOrOwner = role === "admin" || role === "owner";
 
   return (
     <DashboardLayout>
@@ -29,10 +32,20 @@ const Settings = () => {
               <Shield className="h-4 w-4" />
               Security
             </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
             {canManageUsers && (
               <TabsTrigger value="users" className="flex items-center gap-2">
                 <UsersIcon className="h-4 w-4" />
                 User Management
+              </TabsTrigger>
+            )}
+            {isAdminOrOwner && (
+              <TabsTrigger value="audit" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Audit Logs
               </TabsTrigger>
             )}
           </TabsList>
@@ -45,9 +58,19 @@ const Settings = () => {
             <SecuritySettings />
           </TabsContent>
 
+          <TabsContent value="notifications">
+            <EmailNotifications />
+          </TabsContent>
+
           {canManageUsers && (
             <TabsContent value="users">
               <UserManagement />
+            </TabsContent>
+          )}
+
+          {isAdminOrOwner && (
+            <TabsContent value="audit">
+              <AuditLogViewer />
             </TabsContent>
           )}
         </Tabs>
