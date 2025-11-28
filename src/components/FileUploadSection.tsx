@@ -1,11 +1,27 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, File, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { z } from "zod";
 
 const WEBHOOK_URL = "https://digitalautomators.app.n8n.cloud/webhook-test/5914daf9-cbd1-40e2-81d0-8144944abcfc";
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+const fileSchema = z.object({
+  name: z.string().max(255, "File name must be less than 255 characters"),
+  size: z.number().max(MAX_FILE_SIZE, "File size must be less than 10MB"),
+  type: z.string().refine(
+    (type) => type === 'application/pdf' || 
+              type === 'application/json' || 
+              type === 'text/csv' ||
+              type === 'application/vnd.ms-excel' ||
+              type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+              type === 'text/plain',
+    "Invalid file type. Only PDF, JSON, CSV, Excel, and TXT files are allowed"
+  ),
+});
 
 interface UploadedFile {
   file: File;
@@ -13,11 +29,72 @@ interface UploadedFile {
   progress: number;
 }
 
+interface UploadHistory {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+}
+
 const FileUploadSection = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [uploadHistory, setUploadHistory] = useState<UploadHistory[]>([]);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = acceptedFiles.map(file => ({
+  // Load upload history from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('uploadHistory');
+    if (stored) {
+      try {
+        setUploadHistory(JSON.parse(stored));
+      } catch (error) {
+        console.error('Failed to parse upload history');
+      }
+    }
+  }, []);
+
+  // Save upload history to localStorage
+  const saveToHistory = (file: File) => {
+    const historyItem: UploadHistory = {
+      id: `${Date.now()}-${Math.random()}`,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadedAt: new Date().toISOString(),
+    };
+    const newHistory = [historyItem, ...uploadHistory].slice(0, 20); // Keep last 20
+    setUploadHistory(newHistory);
+    localStorage.setItem('uploadHistory', JSON.stringify(newHistory));
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    // Handle rejected files
+    if (rejectedFiles.length > 0) {
+      rejectedFiles.forEach(({ file, errors }) => {
+        errors.forEach((error: any) => {
+          toast.error(`${file.name}: ${error.message}`);
+        });
+      });
+    }
+
+    // Validate accepted files
+    const validFiles: File[] = [];
+    acceptedFiles.forEach(file => {
+      try {
+        fileSchema.parse({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
+        validFiles.push(file);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          toast.error(`${file.name}: ${error.errors[0].message}`);
+        }
+      }
+    });
+
+    const newFiles = validFiles.map(file => ({
       file,
       status: "pending" as const,
       progress: 0,
@@ -28,12 +105,14 @@ const FileUploadSection = () => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
+      'application/pdf': ['.pdf'],
       'application/json': ['.json'],
       'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
       'text/plain': ['.txt'],
     },
+    maxSize: MAX_FILE_SIZE,
   });
 
   const uploadFile = async (index: number) => {
@@ -51,6 +130,7 @@ const FileUploadSection = () => {
 
       if (response.ok) {
         setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "success" as const, progress: 100 } : f));
+        saveToHistory(fileData.file);
         toast.success(`${fileData.file.name} uploaded successfully`);
       } else {
         throw new Error('Upload failed');
@@ -73,13 +153,42 @@ const FileUploadSection = () => {
     });
   };
 
+  const deleteFromHistory = (id: string) => {
+    const newHistory = uploadHistory.filter(item => item.id !== id);
+    setUploadHistory(newHistory);
+    localStorage.setItem('uploadHistory', JSON.stringify(newHistory));
+    toast.success('File removed from history');
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  };
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
-    <Card className="bg-gradient-card border-border/50 shadow-elegant">
-      <CardHeader>
-        <CardTitle className="text-foreground">Upload Database Files</CardTitle>
-        <CardDescription>Upload your food business data files to sync with the AI agent</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-6">
+      <Card className="bg-gradient-card border-border/50 shadow-elegant">
+        <CardHeader>
+          <CardTitle className="text-foreground">Upload Database Files</CardTitle>
+          <CardDescription>Upload your food business data files to sync with the AI agent</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-300 ${
@@ -95,7 +204,7 @@ const FileUploadSection = () => {
           ) : (
             <>
               <p className="text-foreground font-medium mb-2">Drag & drop files here, or click to select</p>
-              <p className="text-sm text-muted-foreground">Supports: JSON, CSV, Excel, TXT</p>
+              <p className="text-sm text-muted-foreground">Supports: PDF, JSON, CSV, Excel, TXT (Max 10MB)</p>
             </>
           )}
         </div>
@@ -118,7 +227,7 @@ const FileUploadSection = () => {
                   <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{fileData.file.name}</p>
-                    <p className="text-xs text-muted-foreground">{(fileData.file.size / 1024).toFixed(2)} KB</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(fileData.file.size)}</p>
                   </div>
                   {fileData.status === "success" && (
                     <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
@@ -144,8 +253,48 @@ const FileUploadSection = () => {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Upload History */}
+      {uploadHistory.length > 0 && (
+        <Card className="bg-gradient-card border-border/50 shadow-elegant">
+          <CardHeader>
+            <CardTitle className="text-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Upload History
+            </CardTitle>
+            <CardDescription>Previously uploaded files</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {uploadHistory.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border hover:border-primary/30 transition-all duration-200"
+                >
+                  <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(item.size)} • {formatDate(item.uploadedAt)}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => deleteFromHistory(item.id)}
+                    className="flex-shrink-0 hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 };
 

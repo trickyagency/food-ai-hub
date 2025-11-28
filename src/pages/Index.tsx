@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import MetricCard from "@/components/MetricCard";
-import FileUploadSection from "@/components/FileUploadSection";
 import CallLogTable from "@/components/CallLogTable";
 import { Phone, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
 
@@ -45,9 +44,6 @@ const Index = () => {
             trend="up"
           />
         </div>
-
-        {/* File Upload Section */}
-        <FileUploadSection />
 
         {/* Call Logs */}
         <CallLogTable />
