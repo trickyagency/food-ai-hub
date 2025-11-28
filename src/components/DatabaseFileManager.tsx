@@ -122,10 +122,10 @@ const DatabaseFileManager = () => {
     maxSize: MAX_FILE_SIZE,
   });
 
-  const uploadFile = async (index: number) => {
+  const uploadFileWithRetry = async (index: number, retryCount = 0): Promise<void> => {
+    const MAX_RETRIES = 3;
     const fileData = files[index];
-    setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "uploading" as const } : f));
-
+    
     const formData = new FormData();
     formData.append('file', fileData.file);
     formData.append('fileName', fileData.file.name);
@@ -139,15 +139,38 @@ const DatabaseFileManager = () => {
         body: formData,
       });
 
-      if (response.ok) {
-        let responseData;
-        try {
-          responseData = await response.json();
-          console.log('n8n webhook response:', responseData);
-          toast.success(`${fileData.file.name} uploaded successfully. Response: ${JSON.stringify(responseData)}`);
-        } catch {
-          toast.success(`${fileData.file.name} uploaded successfully`);
+      let responseData = null;
+      let responseText = '';
+      
+      try {
+        responseText = await response.text();
+        if (responseText) {
+          responseData = JSON.parse(responseText);
         }
+      } catch (e) {
+        // Response wasn't JSON, use text
+      }
+
+      // Store webhook response in database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('webhook_responses').insert({
+          user_id: user.id,
+          file_name: fileData.file.name,
+          file_size: fileData.file.size,
+          mime_type: fileData.file.type,
+          webhook_url: WEBHOOK_URL,
+          status_code: response.status,
+          response_body: responseData,
+          error_message: response.ok ? null : responseText,
+          retry_count: retryCount,
+          success: response.ok
+        });
+      }
+
+      if (response.ok) {
+        console.log('n8n webhook response:', responseData || responseText);
+        toast.success(`${fileData.file.name} uploaded successfully${responseData ? `: ${JSON.stringify(responseData)}` : ''}`);
         
         setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "success" as const, progress: 100 } : f));
         
@@ -157,16 +180,47 @@ const DatabaseFileManager = () => {
           setFiles(prev => prev.filter((_, i) => i !== index));
         }, 1000);
       } else {
-        const errorText = await response.text();
-        console.error('n8n webhook error:', response.status, errorText);
-        throw new Error(`Upload failed: ${response.status} - ${errorText || 'Unknown error'}`);
+        throw new Error(`Upload failed: ${response.status} - ${responseText || 'Unknown error'}`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Network error';
-      console.error('Upload error:', error);
-      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-      toast.error(`Failed to upload ${fileData.file.name}: ${errorMessage}`);
+      console.error(`Upload error (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
+
+      if (retryCount < MAX_RETRIES) {
+        // Exponential backoff: 2^retry * 1000ms (1s, 2s, 4s)
+        const backoffDelay = Math.pow(2, retryCount) * 1000;
+        toast.info(`Retrying upload for ${fileData.file.name} in ${backoffDelay / 1000}s... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        return uploadFileWithRetry(index, retryCount + 1);
+      } else {
+        // All retries exhausted
+        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+        toast.error(`Failed to upload ${fileData.file.name} after ${MAX_RETRIES + 1} attempts: ${errorMessage}`);
+        
+        // Store final failure in database
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('webhook_responses').insert({
+            user_id: user.id,
+            file_name: fileData.file.name,
+            file_size: fileData.file.size,
+            mime_type: fileData.file.type,
+            webhook_url: WEBHOOK_URL,
+            status_code: null,
+            response_body: null,
+            error_message: errorMessage,
+            retry_count: retryCount,
+            success: false
+          });
+        }
+      }
     }
+  };
+
+  const uploadFile = async (index: number) => {
+    setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "uploading" as const } : f));
+    await uploadFileWithRetry(index, 0);
   };
 
   const removeFile = (index: number) => {
