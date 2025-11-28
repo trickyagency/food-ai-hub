@@ -22,9 +22,9 @@ const Upload = () => {
           </div>
         </div>
 
-        {/* File Upload Section - Restricted to Staff and above */}
+        {/* File Upload Section - Restricted to Admins only */}
         <ProtectedFeature
-          allowedRoles={["owner", "admin", "manager", "staff"]}
+          allowedRoles={["owner", "admin"]}
           fallback={
             <Card>
               <CardContent className="py-16">
@@ -37,7 +37,7 @@ const Upload = () => {
                       if you need access to this feature.
                     </p>
                     <p className="text-xs">
-                      Required role: Staff, Manager, Admin, or Owner
+                      Required role: Admin or Owner
                     </p>
                   </div>
                 </div>

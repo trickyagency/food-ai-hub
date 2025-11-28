@@ -7,11 +7,11 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 const WEBHOOK_URL = "https://digitalautomators.app.n8n.cloud/webhook-test/5914daf9-cbd1-40e2-81d0-8144944abcfc";
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
 const fileSchema = z.object({
   name: z.string().max(255, "File name must be less than 255 characters"),
-  size: z.number().max(MAX_FILE_SIZE, "File size must be less than 10MB"),
+  size: z.number().max(MAX_FILE_SIZE, "File size must be less than 200MB"),
   type: z.string().refine(
     (type) => type === 'application/pdf' || 
               type === 'application/json' || 
@@ -204,7 +204,7 @@ const FileUploadSection = () => {
           ) : (
             <>
               <p className="text-foreground font-medium mb-2">Drag & drop files here, or click to select</p>
-              <p className="text-sm text-muted-foreground">Supports: PDF, JSON, CSV, Excel, TXT (Max 10MB)</p>
+              <p className="text-sm text-muted-foreground">Supports: PDF, JSON, CSV, Excel, TXT (Max 200MB)</p>
             </>
           )}
         </div>
