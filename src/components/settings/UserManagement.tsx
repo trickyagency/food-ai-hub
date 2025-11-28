@@ -100,7 +100,11 @@ const UserManagement = () => {
     try {
       // Get current role before updating
       const currentUser = users.find(u => u.id === userId);
-      const oldRole = currentUser?.role || "unknown";
+      const oldRole = currentUser?.role || null;
+
+      // Get current user for logging
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
       const { error: deleteError } = await supabase
         .from("user_roles")
@@ -115,8 +119,20 @@ const UserManagement = () => {
 
       if (insertError) throw insertError;
 
-      // Log the role change
-      await auditLog.roleChange(userId, oldRole, newRole);
+      // Log to role history table
+      const { error: historyError } = await supabase
+        .from("user_role_history")
+        .insert([{
+          user_id: userId,
+          old_role: oldRole as any,
+          new_role: newRole as any,
+          changed_by: user.id,
+        }]);
+
+      if (historyError) console.error("Failed to log role history:", historyError);
+
+      // Log the role change to audit logs
+      await auditLog.roleChange(userId, oldRole || "unknown", newRole);
 
       toast.success("User role updated successfully");
       fetchUsers();
