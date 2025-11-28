@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { auditLog } from "@/lib/auditLog";
 
-const WEBHOOK_URL = "https://digitalautomators.app.n8n.cloud/webhook-test/5914daf9-cbd1-40e2-81d0-8144944abcfc";
+const WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook-test/databaseupload";
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
 const fileSchema = z.object({
