@@ -1,6 +1,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import FileUploadSection from "@/components/FileUploadSection";
+import { ProtectedFeature } from "@/components/ProtectedFeature";
 import { Upload as UploadIcon } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ShieldAlert } from "lucide-react";
 
 const Upload = () => {
   return (
@@ -19,8 +22,31 @@ const Upload = () => {
           </div>
         </div>
 
-        {/* File Upload Section */}
-        <FileUploadSection />
+        {/* File Upload Section - Restricted to Staff and above */}
+        <ProtectedFeature
+          allowedRoles={["owner", "admin", "manager", "staff"]}
+          fallback={
+            <Card>
+              <CardContent className="py-16">
+                <div className="flex flex-col items-center gap-4 text-muted-foreground">
+                  <ShieldAlert className="h-12 w-12" />
+                  <div className="text-center space-y-2">
+                    <p className="text-lg font-medium">Upload Permission Required</p>
+                    <p className="text-sm">
+                      You don't have permission to upload files. Please contact your administrator
+                      if you need access to this feature.
+                    </p>
+                    <p className="text-xs">
+                      Required role: Staff, Manager, Admin, or Owner
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          }
+        >
+          <FileUploadSection />
+        </ProtectedFeature>
       </div>
     </DashboardLayout>
   );
