@@ -90,4 +90,10 @@ export const auditLog = {
       event_type: "profile_updated",
       user_id: userId,
     }),
+
+  fileDeleted: (fileName: string, fileId: string) =>
+    createAuditLog({
+      event_type: "file_deleted",
+      event_details: { file_name: fileName, file_id: fileId },
+    }),
 };
