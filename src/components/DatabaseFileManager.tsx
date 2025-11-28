@@ -128,6 +128,10 @@ const DatabaseFileManager = () => {
 
     const formData = new FormData();
     formData.append('file', fileData.file);
+    formData.append('fileName', fileData.file.name);
+    formData.append('fileSize', fileData.file.size.toString());
+    formData.append('mimeType', fileData.file.type);
+    formData.append('uploadedAt', new Date().toISOString());
 
     try {
       const response = await fetch(WEBHOOK_URL, {
@@ -136,8 +140,16 @@ const DatabaseFileManager = () => {
       });
 
       if (response.ok) {
+        let responseData;
+        try {
+          responseData = await response.json();
+          console.log('n8n webhook response:', responseData);
+          toast.success(`${fileData.file.name} uploaded successfully. Response: ${JSON.stringify(responseData)}`);
+        } catch {
+          toast.success(`${fileData.file.name} uploaded successfully`);
+        }
+        
         setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "success" as const, progress: 100 } : f));
-        toast.success(`${fileData.file.name} uploaded successfully`);
         
         // Refresh the file list
         setTimeout(() => {
@@ -145,11 +157,15 @@ const DatabaseFileManager = () => {
           setFiles(prev => prev.filter((_, i) => i !== index));
         }, 1000);
       } else {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        console.error('n8n webhook error:', response.status, errorText);
+        throw new Error(`Upload failed: ${response.status} - ${errorText || 'Unknown error'}`);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      console.error('Upload error:', error);
       setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-      toast.error(`Failed to upload ${fileData.file.name}`);
+      toast.error(`Failed to upload ${fileData.file.name}: ${errorMessage}`);
     }
   };
 
