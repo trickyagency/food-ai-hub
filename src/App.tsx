@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import RealtimeNotifications from "./components/RealtimeNotifications";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Settings from "./pages/Settings";
@@ -17,6 +18,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <RealtimeNotifications />
         <Toaster />
         <Sonner />
         <BrowserRouter>
