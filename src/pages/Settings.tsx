@@ -1,12 +1,13 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Shield, Users as UsersIcon, FileText, Bell } from "lucide-react";
+import { User, Shield, Users as UsersIcon, FileText, Bell, Activity } from "lucide-react";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import UserManagement from "@/components/settings/UserManagement";
 import AuditLogViewer from "@/components/settings/AuditLogViewer";
 import EmailNotifications from "@/components/settings/EmailNotifications";
+import UserActivityDashboard from "@/components/settings/UserActivityDashboard";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Settings = () => {
@@ -43,10 +44,16 @@ const Settings = () => {
               </TabsTrigger>
             )}
             {isAdminOrOwner && (
-              <TabsTrigger value="audit" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Audit Logs
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="activity" className="flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  User Activity
+                </TabsTrigger>
+                <TabsTrigger value="audit" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Audit Logs
+                </TabsTrigger>
+              </>
             )}
           </TabsList>
 
@@ -69,9 +76,15 @@ const Settings = () => {
           )}
 
           {isAdminOrOwner && (
-            <TabsContent value="audit">
-              <AuditLogViewer />
-            </TabsContent>
+            <>
+              <TabsContent value="activity">
+                <UserActivityDashboard />
+              </TabsContent>
+
+              <TabsContent value="audit">
+                <AuditLogViewer />
+              </TabsContent>
+            </>
           )}
         </Tabs>
       </div>
