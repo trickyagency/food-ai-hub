@@ -1,12 +1,22 @@
 import { ReactNode } from "react";
-import { Phone, Upload, BarChart3, Settings, FileText } from "lucide-react";
+import { Phone, Upload, BarChart3, Settings, FileText, LogOut } from "lucide-react";
 import { NavLink } from "./NavLink";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "./ui/button";
+import { toast } from "sonner";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    toast.success("Logged out successfully");
+  };
+
   const navItems = [
     { icon: BarChart3, label: "Overview", path: "/" },
     { icon: Phone, label: "Call Logs", path: "/calls" },
@@ -46,10 +56,21 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </nav>
 
         <div className="p-4 border-t border-sidebar-border">
-          <div className="px-4 py-3 rounded-lg bg-sidebar-accent/50">
-            <p className="text-xs font-medium text-sidebar-foreground mb-1">Need Help?</p>
-            <p className="text-xs text-muted-foreground">Check our documentation</p>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm">
+              <p className="font-medium text-sidebar-foreground truncate">{user?.email}</p>
+              <p className="text-xs text-muted-foreground">Admin</p>
+            </div>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
         </div>
       </aside>
 
