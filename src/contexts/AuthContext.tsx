@@ -1,100 +1,108 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-/**
- * WARNING: This is a DEMO authentication implementation using localStorage.
- * This is NOT secure for production use. Anyone can bypass this by editing
- * browser storage. For production, use proper backend authentication.
- */
-
-interface User {
-  email: string;
-  id: string;
-}
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  signInWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in on mount
-    const storedUser = localStorage.getItem('demo_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Basic validation
-    if (!email || !password) {
-      return { success: false, error: 'Email and password are required' };
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Signup failed' };
     }
-    if (password.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters' };
-    }
-
-    // Check if user already exists
-    const users = JSON.parse(localStorage.getItem('demo_users') || '{}');
-    if (users[email]) {
-      return { success: false, error: 'User already exists' };
-    }
-
-    // Store user credentials (WARNING: This is NOT secure!)
-    users[email] = { password, id: crypto.randomUUID() };
-    localStorage.setItem('demo_users', JSON.stringify(users));
-
-    // Auto login after signup
-    const newUser = { email, id: users[email].id };
-    setUser(newUser);
-    localStorage.setItem('demo_user', JSON.stringify(newUser));
-
-    return { success: true };
   };
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    // Basic validation
-    if (!email || !password) {
-      return { success: false, error: 'Email and password are required' };
-    }
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    // Check credentials
-    const users = JSON.parse(localStorage.getItem('demo_users') || '{}');
-    if (!users[email]) {
-      return { success: false, error: 'Invalid email or password' };
-    }
-    if (users[email].password !== password) {
-      return { success: false, error: 'Invalid email or password' };
-    }
+      if (error) {
+        return { success: false, error: error.message };
+      }
 
-    // Set user as logged in
-    const loggedInUser = { email, id: users[email].id };
-    setUser(loggedInUser);
-    localStorage.setItem('demo_user', JSON.stringify(loggedInUser));
-
-    return { success: true };
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Login failed' };
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('demo_user');
+  const signInWithGoogle = async () => {
+    const redirectUrl = `${window.location.origin}/`;
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl
+      }
+    });
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        session,
         login,
         signup,
+        signInWithGoogle,
         logout,
         isAuthenticated: !!user,
+        loading,
       }}
     >
       {children}

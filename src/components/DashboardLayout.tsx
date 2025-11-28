@@ -1,66 +1,94 @@
-import { ReactNode } from "react";
-import { Phone, Upload, BarChart3, Settings, FileText, LogOut } from "lucide-react";
-import { NavLink } from "./NavLink";
+import { ReactNode, useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "./ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { NavLink } from "./NavLink";
+import { LayoutDashboard, Upload, LogOut, Users, LucideIcon } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+interface NavItem {
+  icon: LucideIcon;
+  label: string;
+  path: string;
+}
+
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const handleLogout = () => {
-    logout();
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        setUserRole(data?.role || null);
+      }
+    };
+    fetchUserRole();
+  }, [user]);
+
+  const navItems: NavItem[] = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+    { icon: Upload, label: "Upload", path: "/upload" },
+  ];
+
+  if (userRole === "owner" || userRole === "admin") {
+    navItems.push({ icon: Users, label: "Users", path: "/users" });
+  }
+
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logged out successfully");
   };
 
-  const navItems = [
-    { icon: BarChart3, label: "Overview", path: "/" },
-    { icon: Phone, label: "Call Logs", path: "/calls" },
-    { icon: Upload, label: "Upload Data", path: "/upload" },
-    { icon: Settings, label: "Agent Config", path: "/config" },
-    { icon: FileText, label: "Reports", path: "/reports" },
-  ];
-
   return (
-    <div className="flex min-h-screen bg-background dark">
+    <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-sidebar flex flex-col">
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow">
-              <Phone className="w-5 h-5 text-primary-foreground" />
+      <aside className="w-64 border-r border-border flex flex-col">
+        <div className="p-6 border-b border-border">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <LayoutDashboard className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-sidebar-foreground text-lg">AI Caller</h1>
+              <h1 className="font-bold text-foreground">AI Agent Admin</h1>
               <p className="text-xs text-muted-foreground">Food Business</p>
             </div>
-          </div>
+          </Link>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-all duration-200"
-              activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+        <nav className="flex-1 p-4 space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent transition-colors"
+                activeClassName="bg-accent font-medium"
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm">
-              <p className="font-medium text-sidebar-foreground truncate">{user?.email}</p>
-              <p className="text-xs text-muted-foreground">Admin</p>
-            </div>
+        <div className="p-4 border-t border-border space-y-2">
+          <div className="text-sm">
+            <p className="font-medium text-foreground truncate">{user?.email}</p>
+            {userRole && (
+              <p className="text-xs text-muted-foreground capitalize">{userRole}</p>
+            )}
           </div>
           <Button
             variant="outline"
