@@ -1,7 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import FileUploadSection from "@/components/FileUploadSection";
 import FileManager from "@/components/FileManager";
-import VectorSearch from "@/components/VectorSearch";
 import { ProtectedFeature } from "@/components/ProtectedFeature";
 import { Upload as UploadIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,11 +52,6 @@ const Upload = () => {
         {/* File Manager - Restricted to Admins only */}
         <ProtectedFeature allowedRoles={["owner", "admin"]}>
           <FileManager />
-        </ProtectedFeature>
-
-        {/* Vector Search - Restricted to Admins only */}
-        <ProtectedFeature allowedRoles={["owner", "admin"]}>
-          <VectorSearch />
         </ProtectedFeature>
       </div>
     </DashboardLayout>
