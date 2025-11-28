@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          created_at: string
+          event_details: Json | null
+          event_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_details?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_details?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           created_at: string | null
@@ -138,7 +168,7 @@ export type Database = {
       jwt_custom_claims: { Args: never; Returns: Json }
     }
     Enums: {
-      app_role: "owner" | "admin" | "staff" | "viewer"
+      app_role: "owner" | "admin" | "staff" | "viewer" | "manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -266,7 +296,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["owner", "admin", "staff", "viewer"],
+      app_role: ["owner", "admin", "staff", "viewer", "manager"],
     },
   },
 } as const
