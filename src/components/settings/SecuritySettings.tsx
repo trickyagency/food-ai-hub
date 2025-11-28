@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Shield, QrCode, Key } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { auditLog } from "@/lib/auditLog";
 
 const SecuritySettings = () => {
   const { enroll2FA, verify2FA, unenroll2FA, resetPassword } = useAuth();
@@ -64,6 +65,12 @@ const SecuritySettings = () => {
     try {
       const result = await verify2FA(verificationCode);
       if (result.success) {
+        // Get current user ID for audit log
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await auditLog.twoFactorEnabled(user.id);
+        }
+
         toast.success("2FA enabled successfully!");
         setIs2FAEnabled(true);
         setShowEnrollment(false);
@@ -84,6 +91,12 @@ const SecuritySettings = () => {
     try {
       const result = await unenroll2FA();
       if (result.success) {
+        // Get current user ID for audit log
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await auditLog.twoFactorDisabled(user.id);
+        }
+
         toast.success("2FA disabled successfully");
         setIs2FAEnabled(false);
       } else {
@@ -117,6 +130,12 @@ const SecuritySettings = () => {
       });
 
       if (error) throw error;
+
+      // Get current user ID for audit log
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await auditLog.passwordChange(user.id);
+      }
 
       toast.success("Password changed successfully");
       setNewPassword("");

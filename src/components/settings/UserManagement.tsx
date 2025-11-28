@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useUserRole } from "@/hooks/useUserRole";
+import { auditLog } from "@/lib/auditLog";
 
 interface UserProfile {
   id: string;
@@ -97,6 +98,10 @@ const UserManagement = () => {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
+      // Get current role before updating
+      const currentUser = users.find(u => u.id === userId);
+      const oldRole = currentUser?.role || "unknown";
+
       const { error: deleteError } = await supabase
         .from("user_roles")
         .delete()
@@ -109,6 +114,9 @@ const UserManagement = () => {
         .insert([{ user_id: userId, role: newRole as any }]);
 
       if (insertError) throw insertError;
+
+      // Log the role change
+      await auditLog.roleChange(userId, oldRole, newRole);
 
       toast.success("User role updated successfully");
       fetchUsers();
@@ -126,9 +134,16 @@ const UserManagement = () => {
         return;
       }
 
+      // Get user email before deletion
+      const deletedUser = users.find(u => u.id === userId);
+      const email = deletedUser?.email || "unknown";
+
       const { error } = await supabase.auth.admin.deleteUser(userId);
 
       if (error) throw error;
+
+      // Log the user deletion
+      await auditLog.userDeleted(userId, email);
 
       toast.success("User deleted successfully");
       fetchUsers();
@@ -168,6 +183,9 @@ const UserManagement = () => {
         .insert([{ user_id: authData.user.id, role: newUserRole as any }]);
 
       if (roleError) throw roleError;
+
+      // Log the user creation
+      await auditLog.userCreated(authData.user.id, newUserEmail);
 
       // Send password reset email for account setup
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
