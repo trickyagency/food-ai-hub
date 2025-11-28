@@ -196,6 +196,19 @@ export type Database = {
       }
       is_owner_or_admin: { Args: { _user_id: string }; Returns: boolean }
       jwt_custom_claims: { Args: never; Returns: Json }
+      match_vectors: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: number
+          metadata: Json
+          similarity: number
+        }[]
+      }
     }
     Enums: {
       app_role: "owner" | "admin" | "staff" | "viewer" | "manager"

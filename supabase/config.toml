@@ -1,1 +1,2 @@
-project_id = "undppzthskqsikywqvwn"
+[edge-functions.vector-search]
+verify_jwt = false
