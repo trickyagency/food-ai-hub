@@ -182,6 +182,62 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_responses: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_id: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          response_body: Json | null
+          retry_count: number | null
+          status_code: number | null
+          success: boolean | null
+          user_id: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_id?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          response_body?: Json | null
+          retry_count?: number | null
+          status_code?: number | null
+          success?: boolean | null
+          user_id: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_id?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          response_body?: Json | null
+          retry_count?: number | null
+          status_code?: number | null
+          success?: boolean | null
+          user_id?: string
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_responses_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
