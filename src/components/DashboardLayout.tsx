@@ -6,49 +6,52 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
 import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon } from "lucide-react";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
-
 interface NavItem {
   icon: LucideIcon;
   label: string;
   path: string;
 }
-
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const { user, logout } = useAuth();
+const DashboardLayout = ({
+  children
+}: DashboardLayoutProps) => {
+  const {
+    user,
+    logout
+  } = useAuth();
   const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
-
   useEffect(() => {
     const fetchUserRole = async () => {
       if (user) {
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
+        const {
+          data
+        } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
         setUserRole(data?.role || null);
       }
     };
     fetchUserRole();
   }, [user]);
-
-  const navItems: NavItem[] = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-    { icon: Upload, label: "Upload", path: "/upload" },
-    { icon: Settings, label: "Settings", path: "/settings" },
-  ];
-
+  const navItems: NavItem[] = [{
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    path: "/"
+  }, {
+    icon: Upload,
+    label: "Upload",
+    path: "/upload"
+  }, {
+    icon: Settings,
+    label: "Settings",
+    path: "/settings"
+  }];
   const handleLogout = async () => {
     await logout();
     toast.success("Logged out successfully");
   };
-
-  return (
-    <div className="flex min-h-screen bg-background">
+  return <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-64 border-r border-border flex flex-col">
         <div className="p-6 border-b border-border">
@@ -57,42 +60,28 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <LayoutDashboard className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-foreground">AI Agent Admin</h1>
+              <h1 className="font-bold text-foreground">​VOICE AI </h1>
               <p className="text-xs text-muted-foreground">Food Business</p>
             </div>
           </Link>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent transition-colors"
-                activeClassName="bg-accent font-medium"
-              >
+          {navItems.map(item => {
+          const Icon = item.icon;
+          return <NavLink key={item.path} to={item.path} className="flex items-center gap-3 px-4 py-3 rounded-lg text-foreground hover:bg-accent transition-colors" activeClassName="bg-accent font-medium">
                 <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
+              </NavLink>;
+        })}
         </nav>
 
         <div className="p-4 border-t border-border space-y-2">
           <div className="text-sm">
             <p className="font-medium text-foreground truncate">{user?.email}</p>
-            {userRole && (
-              <p className="text-xs text-muted-foreground capitalize">{userRole}</p>
-            )}
+            {userRole && <p className="text-xs text-muted-foreground capitalize">{userRole}</p>}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="w-full"
-          >
+          <Button variant="outline" size="sm" onClick={handleLogout} className="w-full">
             <LogOut className="w-4 h-4 mr-2" />
             Logout
           </Button>
@@ -103,8 +92,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default DashboardLayout;
