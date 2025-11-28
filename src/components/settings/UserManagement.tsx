@@ -138,9 +138,23 @@ const UserManagement = () => {
       const deletedUser = users.find(u => u.id === userId);
       const email = deletedUser?.email || "unknown";
 
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      // Call edge function to delete user
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       // Log the user deletion
       await auditLog.userDeleted(userId, email);
