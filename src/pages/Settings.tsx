@@ -2,13 +2,14 @@ import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { PageTransition } from "@/components/PageTransition";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Shield, Users as UsersIcon, FileText, Bell, Activity } from "lucide-react";
+import { User, Shield, Users as UsersIcon, FileText, Bell, Activity, Phone } from "lucide-react";
 import ProfileSettings from "@/components/settings/ProfileSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import UserManagement from "@/components/settings/UserManagement";
 import AuditLogViewer from "@/components/settings/AuditLogViewer";
 import EmailNotifications from "@/components/settings/EmailNotifications";
 import UserActivityDashboard from "@/components/settings/UserActivityDashboard";
+import VapiSettings from "@/components/settings/VapiSettings";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Settings = () => {
@@ -38,6 +39,10 @@ const Settings = () => {
             <TabsTrigger value="notifications" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="vapi" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Phone className="h-4 w-4" />
+              <span className="hidden sm:inline">Vapi</span>
             </TabsTrigger>
             {canManageUsers && (
               <TabsTrigger value="users" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -69,6 +74,10 @@ const Settings = () => {
 
           <TabsContent value="notifications">
             <EmailNotifications />
+          </TabsContent>
+
+          <TabsContent value="vapi">
+            <VapiSettings />
           </TabsContent>
 
           {canManageUsers && (
