@@ -37,9 +37,9 @@ export const ExportData = ({ metrics }: ExportDataProps) => {
       
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(24);
-      pdf.text("VOICE AI Dashboard", 20, 20);
+      pdf.text("Admin Dashboard", 20, 20);
       pdf.setFontSize(12);
-      pdf.text("Food Business Analytics Report", 20, 30);
+      pdf.text("Analytics Report", 20, 30);
       
       // Date
       pdf.setFontSize(10);
@@ -98,13 +98,13 @@ export const ExportData = ({ metrics }: ExportDataProps) => {
       pdf.setFontSize(8);
       pdf.setTextColor(128, 128, 128);
       pdf.text(
-        "© 2024 Voice AI - Food Business. All rights reserved.",
+        `© ${new Date().getFullYear()} Admin Dashboard. All rights reserved.`,
         pageWidth / 2,
         pageHeight - 10,
         { align: "center" }
       );
       
-      pdf.save(`voice-ai-analytics-${new Date().toISOString().split("T")[0]}.pdf`);
+      pdf.save(`dashboard-analytics-${new Date().toISOString().split("T")[0]}.pdf`);
       toast.success("PDF report downloaded successfully");
     } catch (error) {
       console.error("PDF export error:", error);
@@ -131,7 +131,7 @@ export const ExportData = ({ metrics }: ExportDataProps) => {
       const url = URL.createObjectURL(blob);
       
       link.setAttribute("href", url);
-      link.setAttribute("download", `voice-ai-analytics-${new Date().toISOString().split("T")[0]}.csv`);
+      link.setAttribute("download", `dashboard-analytics-${new Date().toISOString().split("T")[0]}.csv`);
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();

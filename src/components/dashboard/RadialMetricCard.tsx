@@ -6,7 +6,6 @@ import { ArrowUp, ArrowDown, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCounterAnimation } from "@/hooks/useCounterAnimation";
 import MetricTooltip from "./MetricTooltip";
-import ParticleEffect from "./ParticleEffect";
 
 interface RadialMetricCardProps {
   title: string;
@@ -109,9 +108,6 @@ const RadialMetricCard = ({
             
             {/* Radial glow effect */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-primary/20 rounded-full blur-3xl opacity-0 group-hover:opacity-60 transition-opacity duration-700" />
-            
-            {/* Particle Effect */}
-            <ParticleEffect isActive={isHovered} color={color} />
             
             <CardContent className="relative p-4 sm:p-6 backdrop-blur-sm">
               {/* Header with floating icon */}
