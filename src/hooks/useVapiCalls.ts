@@ -47,20 +47,28 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
       setLoading(true);
       setError(null);
 
+      console.log("Fetching calls from Vapi...");
+
       const { data, error: functionError } = await supabase.functions.invoke("vapi-proxy", {
-        body: { endpoint: "/call" },
+        body: { endpoint: "/call?limit=100" },
       });
 
       if (functionError) {
+        console.error("Function error:", functionError);
         throw new Error(functionError.message);
       }
 
       if (data?.error) {
+        console.error("Vapi API error:", data);
         throw new Error(data.error);
       }
 
-      // Vapi returns calls in an array
-      const callsData = Array.isArray(data) ? data : data?.calls || [];
+      console.log("Vapi response:", data);
+
+      // Vapi returns an array of calls directly
+      const callsData = Array.isArray(data) ? data : [];
+      console.log(`Fetched ${callsData.length} calls from Vapi`);
+      
       setCalls(callsData);
       setLastUpdated(new Date());
     } catch (err) {

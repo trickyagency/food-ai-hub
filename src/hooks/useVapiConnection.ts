@@ -9,6 +9,8 @@ export const useVapiConnection = () => {
   const testConnection = async () => {
     setTesting(true);
     try {
+      console.log("Testing Vapi connection...");
+      
       const { data, error } = await supabase.functions.invoke("vapi-proxy", {
         body: { endpoint: "/call?limit=1" },
       });
@@ -21,12 +23,13 @@ export const useVapiConnection = () => {
       }
 
       if (data?.error) {
-        console.error("Vapi API error:", data.error);
+        console.error("Vapi API error:", data);
         setIsConnected(false);
-        toast.error("Vapi API error: " + data.error);
+        toast.error("Vapi API error: " + (data.details || data.error));
         return false;
       }
 
+      console.log("Connection test successful:", data);
       setIsConnected(true);
       toast.success("Successfully connected to Vapi API");
       return true;
