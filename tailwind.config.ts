@@ -22,7 +22,7 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          glow: "hsl(var(--primary-glow))",
+          hover: "hsl(var(--primary-hover))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -76,8 +76,10 @@ export default {
         "gradient-card": "var(--gradient-card)",
       },
       boxShadow: {
-        elegant: "var(--shadow-elegant)",
-        glow: "var(--shadow-glow)",
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
       },
       borderRadius: {
         lg: "var(--radius)",

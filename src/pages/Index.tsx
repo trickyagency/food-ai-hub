@@ -49,15 +49,15 @@ const Index = () => {
   return (
     <DashboardLayout>
       <PageTransition>
-        <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content bg-slate-50 dark:bg-slate-950 min-h-screen">
+        <div className="p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
         {/* Header */}
         <div className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="space-y-2">
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+              <h1 className="text-4xl font-bold text-foreground tracking-tight">
                 Dashboard
               </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-base text-muted-foreground">
                 Real-time call analytics and performance metrics
               </p>
             </div>
@@ -80,7 +80,7 @@ const Index = () => {
           
           {/* Quick Date Ranges */}
           {canSeeAdvancedMetrics && (
-            <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="pb-4 border-b border-border">
               <QuickDateRanges onSelectRange={setDateRange} />
             </div>
           )}

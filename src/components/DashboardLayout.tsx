@@ -52,43 +52,43 @@ const DashboardLayout = ({
     await logout();
     toast.success("Logged out successfully");
   };
-  return <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950">
+  return <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-56 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-white dark:bg-slate-900">
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-slate-900 dark:bg-slate-100 flex items-center justify-center">
-              <LayoutDashboard className="w-5 h-5 text-white dark:text-slate-900" />
+      <aside className="w-64 border-r border-border flex flex-col bg-card shadow-sm">
+        <div className="p-6 border-b border-border">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
+              <LayoutDashboard className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-sm text-slate-900 dark:text-slate-100 tracking-tight">VOICE AI</h1>
-              <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">Food Business</p>
+              <h1 className="font-bold text-base text-foreground tracking-tight">VOICE AI</h1>
+              <p className="text-xs text-muted-foreground font-medium">Food Business</p>
             </div>
           </Link>
         </div>
 
-        <nav className="flex-1 p-3 space-y-0.5">
+        <nav className="flex-1 p-4 space-y-1">
           {navItems.map(item => {
           const Icon = item.icon;
           return <NavLink 
                 key={item.path} 
                 to={item.path} 
-                className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200" 
-                activeClassName="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-semibold"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-foreground hover:bg-muted transition-all duration-200" 
+                activeClassName="bg-primary text-primary-foreground font-semibold shadow-md"
               >
-                <Icon className="w-[18px] h-[18px]" />
+                <Icon className="w-5 h-5" />
                 <span>{item.label}</span>
               </NavLink>;
         })}
         </nav>
 
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+        <div className="p-4 border-t border-border space-y-3">
           <ThemeToggle />
           
-          <div className="px-3 py-2">
-            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{user?.email}</p>
+          <div className="px-4 py-3 bg-muted/50 rounded-lg">
+            <p className="text-sm font-semibold text-foreground truncate">{user?.email}</p>
             {userRole && (
-              <span className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20">
                 {userRole}
               </span>
             )}
@@ -97,16 +97,16 @@ const DashboardLayout = ({
             variant="outline" 
             size="sm" 
             onClick={handleLogout} 
-            className="w-full text-xs h-8"
+            className="w-full"
           >
-            <LogOut className="w-3.5 h-3.5 mr-1.5" />
+            <LogOut className="w-4 h-4 mr-2" />
             Logout
           </Button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950">
+      <main className="flex-1 overflow-auto bg-background">
         {children}
       </main>
     </div>;

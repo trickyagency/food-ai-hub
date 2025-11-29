@@ -18,7 +18,7 @@ const TimeFilter = ({ selected, onChange }: TimeFilterProps) => {
   ];
 
   return (
-    <div className="flex items-center gap-2 rounded-md p-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+    <div className="flex items-center gap-2 rounded-xl p-1 bg-muted/50 border border-border shadow-sm">
       {periods.map((period) => {
         const Icon = period.icon;
         return (
@@ -27,9 +27,9 @@ const TimeFilter = ({ selected, onChange }: TimeFilterProps) => {
             variant={selected === period.value ? "default" : "ghost"}
             size="sm"
             onClick={() => onChange(period.value)}
-            className="min-w-[50px]"
+            className="min-w-[60px] rounded-lg"
           >
-            <span className="text-xs font-medium">{period.label}</span>
+            <span className="text-xs font-semibold">{period.label}</span>
           </Button>
         );
       })}

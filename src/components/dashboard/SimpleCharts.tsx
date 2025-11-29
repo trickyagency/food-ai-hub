@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { DateRange } from "react-day-picker";
 import { Activity } from "lucide-react";
 
@@ -36,36 +36,36 @@ export const CombinedChart = ({ dateRange }: SimpleChartsProps) => {
   const data = generateData(Math.min(days, 30)); // Cap at 30 days for performance
 
   return (
-    <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-      <CardHeader className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-        <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <Activity className="w-5 h-5" />
+    <Card className="border-border bg-card">
+      <CardHeader className="border-b border-border bg-muted/30">
+        <CardTitle className="text-xl font-bold text-foreground flex items-center gap-2">
+          <Activity className="w-5 h-5 text-primary" />
           Performance Overview
         </CardTitle>
-        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Call metrics and order volume trends
         </p>
       </CardHeader>
       <CardContent className="p-6">
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-800" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis 
               dataKey="date" 
-              stroke="#64748b"
+              stroke="hsl(var(--muted-foreground))"
               fontSize={12}
               tickMargin={10}
             />
             <YAxis 
-              stroke="#64748b"
+              stroke="hsl(var(--muted-foreground))"
               fontSize={12}
               tickMargin={10}
             />
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.375rem',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '0.75rem',
                 fontSize: '12px',
               }}
             />
@@ -75,25 +75,25 @@ export const CombinedChart = ({ dateRange }: SimpleChartsProps) => {
             <Line 
               type="monotone" 
               dataKey="calls" 
-              stroke="#3b82f6" 
-              strokeWidth={2}
-              dot={{ fill: '#3b82f6', r: 3 }}
+              stroke="#2E6FFF" 
+              strokeWidth={2.5}
+              dot={{ fill: '#2E6FFF', r: 4 }}
               name="Total Calls"
             />
             <Line 
               type="monotone" 
               dataKey="success" 
               stroke="#10b981" 
-              strokeWidth={2}
-              dot={{ fill: '#10b981', r: 3 }}
+              strokeWidth={2.5}
+              dot={{ fill: '#10b981', r: 4 }}
               name="Successful Calls"
             />
             <Line 
               type="monotone" 
               dataKey="orders" 
               stroke="#8b5cf6" 
-              strokeWidth={2}
-              dot={{ fill: '#8b5cf6', r: 3 }}
+              strokeWidth={2.5}
+              dot={{ fill: '#8b5cf6', r: 4 }}
               name="Orders"
             />
           </LineChart>
