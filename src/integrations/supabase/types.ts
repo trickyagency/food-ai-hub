@@ -44,6 +44,51 @@ export type Database = {
         }
         Relationships: []
       }
+      file_upload_history: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          file_id: string
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          retry_count: number | null
+          upload_status: string
+          user_id: string
+          webhook_url: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_id: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          retry_count?: number | null
+          upload_status: string
+          user_id: string
+          webhook_url?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_id?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          retry_count?: number | null
+          upload_status?: string
+          user_id?: string
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           created_at: string | null
