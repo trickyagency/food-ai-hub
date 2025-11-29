@@ -1,8 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ShoppingCart, CheckCircle2, XCircle, AlertTriangle, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
-const OrderMetrics = () => {
+interface OrderMetricsProps {
+  dateRange?: DateRange;
+}
+
+const OrderMetrics = ({ dateRange }: OrderMetricsProps) => {
   const orderData = [
     { name: "Total Orders", value: 2847, color: "hsl(var(--primary))" },
     { name: "Processed", value: 2643, color: "hsl(var(--success))" },
@@ -73,10 +80,20 @@ const OrderMetrics = () => {
       {/* Chart */}
       <Card className="bg-gradient-card border-border/50 shadow-elegant">
         <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-primary" />
-            Order Distribution
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-foreground flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+              Order Distribution
+            </CardTitle>
+            {dateRange?.from && dateRange?.to && (
+              <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5">
+                <Calendar className="w-3 h-3" />
+                <span className="text-xs">
+                  {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}
+                </span>
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>

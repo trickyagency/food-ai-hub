@@ -2,6 +2,8 @@ import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import RadialMetricCard from "@/components/dashboard/RadialMetricCard";
 import TimeFilter from "@/components/dashboard/TimeFilter";
+import DateRangePicker from "@/components/dashboard/DateRangePicker";
+import QuickDateRanges from "@/components/dashboard/QuickDateRanges";
 import EnhancedCallLogTable from "@/components/dashboard/EnhancedCallLogTable";
 import OrderMetrics from "@/components/dashboard/OrderMetrics";
 import AdvancedAnalytics from "@/components/dashboard/AdvancedAnalytics";
@@ -9,12 +11,14 @@ import { ProtectedFeature } from "@/components/ProtectedFeature";
 import { Phone, TrendingUp, Clock, CheckCircle2, PhoneForwarded } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Card, CardContent } from "@/components/ui/card";
+import { DateRange } from "react-day-picker";
 
 type TimePeriod = "hours" | "days" | "weeks" | "months" | "years";
 
 const Index = () => {
   const { role } = useUserRole();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("days");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Define what each role can see
   const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
@@ -24,25 +28,40 @@ const Index = () => {
     <DashboardLayout>
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
-          <div className="space-y-1 lg:space-y-2">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
-              Dashboard
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Monitor your AI calling agent performance in real-time
-            </p>
-            {role && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <p className="text-xs sm:text-sm font-medium capitalize text-primary">
-                  {role}
-                </p>
+        <div className="flex flex-col gap-4 lg:gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="space-y-1 lg:space-y-2">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
+                Dashboard
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Monitor your AI calling agent performance in real-time
+              </p>
+              {role && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <p className="text-xs sm:text-sm font-medium capitalize text-primary">
+                    {role}
+                  </p>
+                </div>
+              )}
+            </div>
+            {canSeeAdvancedMetrics && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <TimeFilter selected={timePeriod} onChange={setTimePeriod} />
+                <DateRangePicker 
+                  dateRange={dateRange} 
+                  onDateRangeChange={setDateRange}
+                />
               </div>
             )}
           </div>
+          
+          {/* Quick Date Ranges */}
           {canSeeAdvancedMetrics && (
-            <TimeFilter selected={timePeriod} onChange={setTimePeriod} />
+            <div className="pb-2 border-b border-border/50">
+              <QuickDateRanges onSelectRange={setDateRange} />
+            </div>
           )}
         </div>
 
@@ -119,20 +138,20 @@ const Index = () => {
         {/* Order Metrics */}
         {canSeeAdvancedMetrics && (
           <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
-            <OrderMetrics />
+            <OrderMetrics dateRange={dateRange} />
           </div>
         )}
 
         {/* Advanced Analytics */}
         {canSeeAdvancedMetrics && (
           <div className="animate-fade-in" style={{ animationDelay: "300ms" }}>
-            <AdvancedAnalytics />
+            <AdvancedAnalytics dateRange={dateRange} />
           </div>
         )}
 
         {/* Recent Calls - Enhanced with Conversation Viewer */}
         {canSeeCallLogs ? (
-          <EnhancedCallLogTable />
+          <EnhancedCallLogTable dateRange={dateRange} />
         ) : (
           <Card>
             <CardContent className="py-12">
