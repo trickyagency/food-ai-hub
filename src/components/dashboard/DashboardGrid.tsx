@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Responsive, WidthProvider, Layout } from "react-grid-layout";
 import { WidgetWrapper } from "./WidgetWrapper";
 import { CallMetricsWidget } from "./widgets/CallMetricsWidget";
-import { OrderMetricsWidget } from "./widgets/OrderMetricsWidget";
-import { AnalyticsWidget } from "./widgets/AnalyticsWidget";
 import { CallLogsWidget } from "./widgets/CallLogsWidget";
 import { DateRange } from "react-day-picker";
 import "react-grid-layout/css/styles.css";
@@ -47,20 +45,6 @@ export const DashboardGrid = ({
         return (
           <WidgetWrapper isDragging={isDragging}>
             <CallMetricsWidget canSeeAdvancedMetrics={canSeeAdvancedMetrics} dateRange={dateRange} />
-          </WidgetWrapper>
-        );
-      case "order-metrics":
-        if (!canSeeAdvancedMetrics) return null;
-        return (
-          <WidgetWrapper isDragging={isDragging}>
-            <OrderMetricsWidget dateRange={dateRange} />
-          </WidgetWrapper>
-        );
-      case "analytics":
-        if (!canSeeAdvancedMetrics) return null;
-        return (
-          <WidgetWrapper isDragging={isDragging}>
-            <AnalyticsWidget dateRange={dateRange} />
           </WidgetWrapper>
         );
       case "call-logs":
