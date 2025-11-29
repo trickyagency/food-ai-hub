@@ -14,8 +14,12 @@ import VapiConnectionStatus from "@/components/dashboard/VapiConnectionStatus";
 import CallFilters, { CallFilterOptions } from "@/components/dashboard/CallFilters";
 import RealTimeCallMonitor from "@/components/dashboard/RealTimeCallMonitor";
 import DetailedAnalytics from "@/components/dashboard/DetailedAnalytics";
+import { MakeCallDialog } from "@/components/dashboard/MakeCallDialog";
+import { AssistantsWidget } from "@/components/dashboard/AssistantsWidget";
+import { PhoneNumbersWidget } from "@/components/dashboard/PhoneNumbersWidget";
+import { AccountOverviewWidget } from "@/components/dashboard/AccountOverviewWidget";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Activity, Phone } from "lucide-react";
+import { BarChart3, Activity, Phone, Settings } from "lucide-react";
 
 const Index = () => {
   const { role } = useUserRole();
@@ -62,13 +66,16 @@ const Index = () => {
         <div className="p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
           {/* Header */}
           <div className="flex flex-col gap-4">
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-foreground tracking-tight">
-                Voice AI Agent Dashboard
-              </h1>
-              <p className="text-base text-muted-foreground">
-                Real-time call analytics and performance metrics from your Vapi account
-              </p>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-bold text-foreground tracking-tight">
+                  VOICE AI Dashboard
+                </h1>
+                <p className="text-base text-muted-foreground">
+                  Real-time AI voice assistant analytics and call management
+                </p>
+              </div>
+              <MakeCallDialog />
             </div>
             
             {/* Connection Status */}
@@ -125,6 +132,10 @@ const Index = () => {
                           Call Logs
                         </TabsTrigger>
                       )}
+                      <TabsTrigger value="account" className="flex items-center gap-2">
+                        <Settings className="w-4 h-4" />
+                        Account & Resources
+                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-8">
@@ -150,6 +161,17 @@ const Index = () => {
                         <VapiCallLogsTable calls={filteredCalls} loading={false} />
                       </TabsContent>
                     )}
+
+                    <TabsContent value="account" className="space-y-8">
+                      {/* Account Overview */}
+                      <AccountOverviewWidget analytics={allAnalytics} />
+                      
+                      {/* Resources Grid */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <AssistantsWidget />
+                        <PhoneNumbersWidget />
+                      </div>
+                    </TabsContent>
                   </Tabs>
                 </>
               )}
