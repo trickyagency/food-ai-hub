@@ -7,7 +7,7 @@ interface AnalyticsWidgetProps {
 
 export const AnalyticsWidget = ({ dateRange }: AnalyticsWidgetProps) => {
   return (
-    <div className="p-6 h-full overflow-auto">
+    <div className="p-6 h-full">
       <CombinedChart dateRange={dateRange} />
     </div>
   );
