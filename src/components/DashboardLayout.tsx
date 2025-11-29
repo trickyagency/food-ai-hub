@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
+import { ThemeToggle } from "./ThemeToggle";
 import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon } from "lucide-react";
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -82,6 +83,8 @@ const DashboardLayout = ({
         </nav>
 
         <div className="p-3 border-t border-border/60 space-y-2.5">
+          <ThemeToggle />
+          
           <div className="px-3 py-2">
             <p className="text-xs font-semibold text-sidebar-foreground truncate">{user?.email}</p>
             {userRole && (

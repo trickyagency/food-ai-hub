@@ -1,5 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { PageTransition } from "@/components/PageTransition";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Shield, Users as UsersIcon, FileText, Bell, Activity } from "lucide-react";
 import ProfileSettings from "@/components/settings/ProfileSettings";
@@ -17,6 +18,7 @@ const Settings = () => {
 
   return (
     <DashboardLayout>
+      <PageTransition>
       <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto">
         <div className="space-y-3 pb-6 border-b border-border/50">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">Settings</h1>
@@ -88,6 +90,7 @@ const Settings = () => {
           )}
         </Tabs>
       </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };
