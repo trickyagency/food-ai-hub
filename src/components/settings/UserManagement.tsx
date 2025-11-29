@@ -57,6 +57,7 @@ const UserManagement = () => {
   const [newUserRole, setNewUserRole] = useState("viewer");
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [pendingRoleChange, setPendingRoleChange] = useState<{ userId: string; newRole: string; userEmail: string } | null>(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -99,6 +100,26 @@ const UserManagement = () => {
       toast.error("Failed to load users: " + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRoleChangeRequest = (userId: string, newRole: string) => {
+    // If promoting to admin, show confirmation dialog
+    if (newRole === "admin" && currentUserRole === "owner") {
+      const user = users.find(u => u.id === userId);
+      if (user) {
+        setPendingRoleChange({ userId, newRole, userEmail: user.email });
+        return;
+      }
+    }
+    // For non-admin roles, proceed directly
+    updateUserRole(userId, newRole);
+  };
+
+  const confirmRoleChange = () => {
+    if (pendingRoleChange) {
+      updateUserRole(pendingRoleChange.userId, pendingRoleChange.newRole);
+      setPendingRoleChange(null);
     }
   };
 
@@ -278,7 +299,44 @@ const UserManagement = () => {
   };
 
   return (
-    <Card>
+    <>
+      {/* Admin Promotion Confirmation Dialog */}
+      <AlertDialog open={!!pendingRoleChange} onOpenChange={(open) => !open && setPendingRoleChange(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-destructive" />
+              Promote to Admin Role?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to promote <span className="font-semibold text-foreground">{pendingRoleChange?.userEmail}</span> to <span className="font-semibold text-foreground">Admin</span>.
+              </p>
+              <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
+                <p className="font-semibold text-foreground">Admin users will have elevated permissions to:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Add and manage users</li>
+                  <li>Assign roles (Manager, Staff, Viewer)</li>
+                  <li>View all audit logs and user activity</li>
+                  <li>Access sensitive data and settings</li>
+                  <li>Delete non-privileged users</li>
+                </ul>
+              </div>
+              <p className="text-destructive font-medium">
+                ⚠️ Only promote trusted users to this role.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRoleChange} className="bg-destructive hover:bg-destructive/90">
+              Confirm Promotion
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card>
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
@@ -370,7 +428,7 @@ const UserManagement = () => {
                     {canManageUser(user.id, user.role) ? (
                       <Select
                         value={user.role}
-                        onValueChange={(value) => updateUserRole(user.id, value)}
+                        onValueChange={(value) => handleRoleChangeRequest(user.id, value)}
                       >
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -429,6 +487,7 @@ const UserManagement = () => {
         )}
       </CardContent>
     </Card>
+    </>
   );
 };
 
