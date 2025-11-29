@@ -49,7 +49,7 @@ const Index = () => {
   return (
     <DashboardLayout>
       <PageTransition>
-        <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content">
+        <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content bg-slate-50 dark:bg-slate-950 min-h-screen">
         {/* Header */}
         <div className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">

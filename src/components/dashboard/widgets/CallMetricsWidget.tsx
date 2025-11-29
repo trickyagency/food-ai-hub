@@ -1,4 +1,4 @@
-import RadialMetricCard from "@/components/dashboard/RadialMetricCard";
+import SimpleMetricCard from "@/components/dashboard/SimpleMetricCard";
 import { Phone, TrendingUp, Clock, CheckCircle2, PhoneForwarded } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -8,69 +8,65 @@ interface CallMetricsWidgetProps {
 
 export const CallMetricsWidget = ({ canSeeAdvancedMetrics }: CallMetricsWidgetProps) => {
   return (
-    <div className="p-6 h-full overflow-auto">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
-        <RadialMetricCard
+    <div className="p-6 h-full overflow-auto bg-slate-50 dark:bg-slate-950">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <SimpleMetricCard
           title="Total Calls"
           value="1,247"
-          percentage={85}
-          change="+12.5% from last period"
+          change="+12.5%"
           icon={Phone}
           trend="up"
+          subtitle="vs. last period"
         />
-        <RadialMetricCard
-          title="Forwarded Calls"
+        <SimpleMetricCard
+          title="Forwarded"
           value="342"
-          percentage={27}
-          change="+8.2% from last period"
+          change="+8.2%"
           icon={PhoneForwarded}
           trend="up"
-          color="hsl(var(--info))"
+          subtitle="calls redirected"
         />
-        <RadialMetricCard
+        <SimpleMetricCard
           title="Success Rate"
           value="94.2%"
-          percentage={94}
-          change="+2.4% from last period"
+          change="+2.4%"
           icon={CheckCircle2}
           trend="up"
-          color="hsl(var(--success))"
+          subtitle="completion rate"
         />
         
         {canSeeAdvancedMetrics ? (
           <>
-            <RadialMetricCard
+            <SimpleMetricCard
               title="Avg. Duration"
               value="3m 24s"
-              percentage={68}
-              change="-0.8% from last period"
+              change="-0.8%"
               icon={Clock}
               trend="down"
-              color="hsl(var(--warning))"
+              subtitle="call length"
             />
-            <RadialMetricCard
-              title="Conversion Rate"
+            <SimpleMetricCard
+              title="Conversion"
               value="67.8%"
-              percentage={68}
-              change="+5.1% from last period"
+              change="+5.1%"
               icon={TrendingUp}
               trend="up"
-              color="hsl(var(--accent))"
+              subtitle="order conversion"
             />
           </>
         ) : (
           <>
-            <Card className="col-span-1 bg-muted/30 border-dashed">
+            <Card className="col-span-1 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
               <CardContent className="p-6 flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground text-center font-medium">
-                  Upgrade for advanced metrics
+                <p className="text-sm text-slate-600 dark:text-slate-400 text-center font-medium">
+                  Contact admin for access
                 </p>
               </CardContent>
             </Card>
-            <Card className="col-span-1 bg-muted/30 border-dashed">
+            <Card className="col-span-1 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
               <CardContent className="p-6 flex items-center justify-center h-full">
-                <p className="text-sm text-muted-foreground text-center font-medium">
-                  Upgrade for advanced metrics
+                <p className="text-sm text-slate-600 dark:text-slate-400 text-center font-medium">
+                  Contact admin for access
                 </p>
               </CardContent>
             </Card>
