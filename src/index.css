@@ -161,4 +161,39 @@ All colors MUST be HSL.
   .drop-shadow-xl {
     filter: drop-shadow(0 20px 25px rgb(0 0 0 / 0.15));
   }
+
+  /* Dashboard Grid Styles */
+  .dashboard-grid .react-grid-item {
+    transition: all 200ms ease;
+    transition-property: left, top, width, height;
+  }
+
+  .dashboard-grid .react-grid-item.react-grid-placeholder {
+    background: hsl(var(--primary) / 0.15);
+    opacity: 0.3;
+    border-radius: 0.5rem;
+    border: 2px dashed hsl(var(--primary));
+    z-index: 2;
+    transition-duration: 100ms;
+  }
+
+  .dashboard-grid .react-resizable-handle {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .dashboard-grid .react-grid-item:hover .react-resizable-handle {
+    opacity: 1;
+  }
+
+  .dashboard-grid .react-resizable-handle::after {
+    content: "";
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid hsl(var(--muted-foreground));
+    border-bottom: 2px solid hsl(var(--muted-foreground));
+  }
 }
