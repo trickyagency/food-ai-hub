@@ -56,8 +56,14 @@ const UserManagement = () => {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("viewer");
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
     fetchUsers();
   }, []);
 
@@ -98,13 +104,19 @@ const UserManagement = () => {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      // Get current role before updating
-      const currentUser = users.find(u => u.id === userId);
-      const oldRole = currentUser?.role || null;
-
       // Get current user for logging
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
+
+      // Prevent users from changing their own role
+      if (user.id === userId) {
+        toast.error("You cannot change your own role");
+        return;
+      }
+
+      // Get current role before updating
+      const currentUser = users.find(u => u.id === userId);
+      const oldRole = currentUser?.role || null;
 
       const { error: deleteError } = await supabase
         .from("user_roles")
@@ -256,7 +268,10 @@ const UserManagement = () => {
     }
   };
 
-  const canManageUser = (userRole: string) => {
+  const canManageUser = (userId: string, userRole: string) => {
+    // Cannot manage own role
+    if (userId === currentUserId) return false;
+    
     if (currentUserRole === "owner") return true;
     if (currentUserRole === "admin" && userRole !== "owner" && userRole !== "admin") return true;
     return false;
@@ -352,7 +367,7 @@ const UserManagement = () => {
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>{user.full_name || "-"}</TableCell>
                   <TableCell>
-                    {canManageUser(user.role) ? (
+                    {canManageUser(user.id, user.role) ? (
                       <Select
                         value={user.role}
                         onValueChange={(value) => updateUserRole(user.id, value)}
@@ -383,7 +398,7 @@ const UserManagement = () => {
                     {new Date(user.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {canManageUser(user.role) && (
+                    {canManageUser(user.id, user.role) && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon">
