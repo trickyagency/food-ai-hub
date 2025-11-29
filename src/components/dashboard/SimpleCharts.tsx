@@ -75,9 +75,9 @@ export const CombinedChart = ({ dateRange }: SimpleChartsProps) => {
             <Line 
               type="monotone" 
               dataKey="calls" 
-              stroke="#334155" 
+              stroke="#3b82f6" 
               strokeWidth={2}
-              dot={{ fill: '#334155', r: 3 }}
+              dot={{ fill: '#3b82f6', r: 3 }}
               name="Total Calls"
             />
             <Line 
@@ -91,9 +91,9 @@ export const CombinedChart = ({ dateRange }: SimpleChartsProps) => {
             <Line 
               type="monotone" 
               dataKey="orders" 
-              stroke="#64748b" 
+              stroke="#8b5cf6" 
               strokeWidth={2}
-              dot={{ fill: '#64748b', r: 3 }}
+              dot={{ fill: '#8b5cf6', r: 3 }}
               name="Orders"
             />
           </LineChart>
