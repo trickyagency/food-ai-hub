@@ -82,7 +82,7 @@ export const DashboardGrid = ({
       isResizable={true}
       compactType="vertical"
       preventCollision={true}
-      margin={[20, 20]}
+      margin={[0, 0]}
       containerPadding={[0, 0]}
     >
       {visibleWidgets.map((widgetId) => (
