@@ -20,6 +20,7 @@ import { AssistantsWidget } from "@/components/dashboard/AssistantsWidget";
 import { PhoneNumbersWidget } from "@/components/dashboard/PhoneNumbersWidget";
 import { AccountOverviewWidget } from "@/components/dashboard/AccountOverviewWidget";
 import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicator";
+import { ExportAnalytics } from "@/components/dashboard/ExportAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Activity, Phone, Settings } from "lucide-react";
 
@@ -91,7 +92,10 @@ const Index = () => {
                   Real-time AI voice assistant analytics and call management
                 </p>
               </div>
-              <MakeCallDialog />
+              <div className="flex gap-2">
+                <ExportAnalytics calls={filteredCalls} analytics={analytics} />
+                <MakeCallDialog />
+              </div>
             </div>
             
             {/* Connection Status */}
