@@ -7,6 +7,8 @@ import { VapiCall } from "@/hooks/useVapiCalls";
 import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { format } from "date-fns";
 import CallDetailDialog from "./CallDetailDialog";
+import SwipeableCallRow from "./SwipeableCallRow";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface VapiCallLogsTableProps {
   calls: VapiCall[];
@@ -17,6 +19,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCall, setSelectedCall] = useState<VapiCall | null>(null);
   const itemsPerPage = 10;
+  const isMobile = useIsMobile();
 
   const totalPages = Math.ceil(calls.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -102,40 +105,50 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentCalls.map((call) => (
-                    <TableRow key={call.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <Badge variant="outline">{getCallTypeLabel(call.type)}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {call.customer?.number || call.phoneNumber?.number || "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {call.duration
-                          ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s`
-                          : "N/A"}
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        ${(call.cost || 0).toFixed(4)}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(call.status, call.endedReason)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(call.createdAt), "MMM d, h:mm a")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedCall(call)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  currentCalls.map((call) =>
+                    isMobile ? (
+                      <SwipeableCallRow
+                        key={call.id}
+                        call={call}
+                        onViewDetails={setSelectedCall}
+                        getStatusBadge={getStatusBadge}
+                        getCallTypeLabel={getCallTypeLabel}
+                      />
+                    ) : (
+                      <TableRow key={call.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <Badge variant="outline">{getCallTypeLabel(call.type)}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {call.customer?.number || call.phoneNumber?.number || "N/A"}
+                        </TableCell>
+                        <TableCell>
+                          {call.duration
+                            ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s`
+                            : "N/A"}
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          ${(call.cost || 0).toFixed(4)}
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(call.status, call.endedReason)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(call.createdAt), "MMM d, h:mm a")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedCall(call)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  )
                 )}
               </TableBody>
             </Table>

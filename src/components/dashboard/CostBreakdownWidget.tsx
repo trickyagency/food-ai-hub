@@ -48,25 +48,25 @@ const CostBreakdownWidget = ({ analytics }: CostBreakdownWidgetProps) => {
   return (
     <Card className="border-border/50 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-primary" />
+        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+          <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
           Cost Breakdown
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {costItems.map((item) => (
             <div
               key={item.label}
-              className={`${item.lightBg} rounded-xl p-4 space-y-2 border border-border/30`}
+              className={`${item.lightBg} rounded-xl p-3 sm:p-4 space-y-2 border border-border/30 touch-manipulation active:scale-95 transition-transform`}
             >
               <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${item.color}`} />
-                <p className="text-xs font-medium text-muted-foreground">
+                <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${item.color}`} />
+                <p className="text-xs font-medium text-muted-foreground truncate">
                   {item.label}
                 </p>
               </div>
-              <p className={`text-2xl font-bold ${item.textColor}`}>
+              <p className={`text-xl sm:text-2xl font-bold ${item.textColor}`}>
                 ${item.value.toFixed(2)}
               </p>
             </div>
