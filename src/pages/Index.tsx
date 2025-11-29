@@ -4,26 +4,21 @@ import TimeFilter from "@/components/dashboard/TimeFilter";
 import DateRangePicker from "@/components/dashboard/DateRangePicker";
 import QuickDateRanges from "@/components/dashboard/QuickDateRanges";
 import { ExportData } from "@/components/dashboard/ExportData";
-import { DashboardGrid } from "@/components/dashboard/DashboardGrid";
-import { DashboardCustomizer } from "@/components/dashboard/DashboardCustomizer";
+import { CallMetricsWidget } from "@/components/dashboard/widgets/CallMetricsWidget";
+import { AnalyticsWidget } from "@/components/dashboard/widgets/AnalyticsWidget";
+import { CallLogsWidget } from "@/components/dashboard/widgets/CallLogsWidget";
 import { MetricCardsSkeletonGrid } from "@/components/dashboard/MetricCardSkeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useDashboardLayout } from "@/hooks/useDashboardLayout";
-import { useAuth } from "@/contexts/AuthContext";
 import { DateRange } from "react-day-picker";
 
 type TimePeriod = "hours" | "days" | "weeks" | "months" | "years";
 
 const Index = () => {
   const { role } = useUserRole();
-  const { user } = useAuth();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("days");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Dashboard layout management
-  const { config, saveLayout, toggleWidget, resetLayout } = useDashboardLayout(user?.id);
 
   // Define what each role can see
   const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
@@ -68,12 +63,6 @@ const Index = () => {
                   dateRange={dateRange} 
                   onDateRangeChange={setDateRange}
                 />
-                <DashboardCustomizer
-                  visibleWidgets={config.visibleWidgets}
-                  onToggleWidget={toggleWidget}
-                  onResetLayout={resetLayout}
-                  onSaveLayout={() => saveLayout(config.layouts)}
-                />
                 <ExportData metrics={metrics} />
               </div>
             )}
@@ -87,20 +76,30 @@ const Index = () => {
           )}
         </div>
 
-        {/* Dashboard Grid with Customizable Widgets */}
+        {/* Dashboard Content */}
         {isLoading ? (
           <div className="space-y-8">
             <MetricCardsSkeletonGrid />
           </div>
         ) : (
-          <DashboardGrid
-            layouts={config.layouts}
-            visibleWidgets={config.visibleWidgets}
-            dateRange={dateRange}
-            canSeeAdvancedMetrics={canSeeAdvancedMetrics}
-            canSeeCallLogs={canSeeCallLogs}
-            onLayoutChange={saveLayout}
-          />
+          <div className="space-y-8">
+            {/* Call Metrics Section */}
+            <CallMetricsWidget 
+              canSeeAdvancedMetrics={canSeeAdvancedMetrics}
+              dateRange={dateRange}
+            />
+
+            {/* Analytics Section */}
+            {canSeeAdvancedMetrics && (
+              <AnalyticsWidget dateRange={dateRange} />
+            )}
+
+            {/* Call Logs Section */}
+            <CallLogsWidget 
+              dateRange={dateRange}
+              canSeeCallLogs={canSeeCallLogs}
+            />
+          </div>
         )}
         </div>
       </PageTransition>
