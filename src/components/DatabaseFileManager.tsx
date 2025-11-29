@@ -205,7 +205,7 @@ const DatabaseFileManager = () => {
     formData.append('mimeType', fileData.file.type);
     formData.append('uploadedAt', new Date().toISOString());
     formData.append('storagePath', storagePath);
-    formData.append('bucketName', 'database-files'); // Explicit bucket name for n8n
+    formData.append('bucketName', bucketName); // Explicit bucket name for n8n
     
     // Add user data
     if (user) {
