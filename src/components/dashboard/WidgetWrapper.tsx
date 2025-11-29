@@ -11,15 +11,15 @@ export const WidgetWrapper = ({ children, title, isDragging }: WidgetWrapperProp
   return (
     <div 
       className={`
-        relative h-full overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md
-        transition-all duration-200
+        relative h-full overflow-hidden bg-card border border-border rounded-xl shadow-md hover:shadow-xl
+        transition-all duration-300
         ${isDragging ? "opacity-50 cursor-grabbing" : ""}
       `}
     >
       {/* Drag Handle */}
-      <div className="absolute top-2 right-2 z-10 cursor-grab active:cursor-grabbing opacity-0 hover:opacity-100 transition-opacity">
-        <div className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700">
-          <GripVertical className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+      <div className="absolute top-3 right-3 z-10 cursor-grab active:cursor-grabbing opacity-0 hover:opacity-100 transition-opacity">
+        <div className="p-2 rounded-lg bg-muted hover:bg-muted/80 shadow-sm">
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
       </div>
       

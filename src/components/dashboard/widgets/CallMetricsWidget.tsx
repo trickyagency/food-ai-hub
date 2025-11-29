@@ -33,8 +33,8 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics, dateRange }: CallMetr
   const avgSeconds = avgDurationSeconds % 60;
 
   return (
-    <div className="p-6 h-full bg-slate-50 dark:bg-slate-950">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+    <div className="p-6 h-full bg-background">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
         <SimpleMetricCard
           title="Total Calls"
           value={totalCalls.toLocaleString()}
@@ -81,16 +81,16 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics, dateRange }: CallMetr
           </>
         ) : (
           <>
-            <Card className="col-span-1 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <Card className="col-span-1 bg-muted border-border hover:shadow-md transition-shadow">
               <CardContent className="p-6 flex items-center justify-center h-full">
-                <p className="text-sm text-slate-600 dark:text-slate-400 text-center font-medium">
+                <p className="text-sm text-muted-foreground text-center font-medium">
                   Contact admin for access
                 </p>
               </CardContent>
             </Card>
-            <Card className="col-span-1 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+            <Card className="col-span-1 bg-muted border-border hover:shadow-md transition-shadow">
               <CardContent className="p-6 flex items-center justify-center h-full">
-                <p className="text-sm text-slate-600 dark:text-slate-400 text-center font-medium">
+                <p className="text-sm text-muted-foreground text-center font-medium">
                   Contact admin for access
                 </p>
               </CardContent>

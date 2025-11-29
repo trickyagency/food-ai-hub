@@ -79,10 +79,10 @@ const allCalls: CallLog[] = [
     address: "555 West St, New York, NY",
     duration: "2:45", 
     status: "completed", 
-    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
+    timestamp: new Date(Date.now() - 36 * 60 * 60 * 1000),
     conversation: [
-      "AI: Hello! Confirming your order for tomorrow.",
-      "Customer: Yes, everything is ready on our end.",
+      "AI: Hello! Confirming your order details.",
+      "Customer: Perfect timing, we just got the order ready.",
     ]
   },
 ];
@@ -94,7 +94,6 @@ interface ProfessionalCallTableProps {
 const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
 
-  // Filter calls based on date range
   const filteredCalls = dateRange?.from && dateRange?.to
     ? allCalls.filter(call => {
         const callDate = call.timestamp;
@@ -102,73 +101,71 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
       })
     : allCalls;
 
-  const getStatusStyle = (status: CallLog["status"]) => {
-    switch (status) {
-      case "completed": 
-        return "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30";
-      case "failed": 
-        return "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30";
-      case "ongoing": 
-        return "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30";
-    }
-  };
-
   const formatTime = (date: Date) => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
 
-    if (diffDays > 0) return `${diffDays}d ago`;
-    if (diffHours > 0) return `${diffHours}h ago`;
-    return "Just now";
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-success/10 text-success border border-success/20";
+      case "failed":
+        return "bg-destructive/10 text-destructive border border-destructive/20";
+      case "ongoing":
+        return "bg-warning/10 text-warning border border-warning/20";
+      default:
+        return "bg-muted text-muted-foreground border border-border";
+    }
   };
 
   return (
     <>
-      <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <CardHeader className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 pb-4">
-          <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100">
-            Recent Calls
-          </CardTitle>
-          {dateRange?.from && dateRange?.to && (
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              Showing {filteredCalls.length} calls in selected range
-            </p>
-          )}
+      <Card className="border-border bg-card">
+        <CardHeader className="border-b border-border bg-muted/30">
+          <CardTitle className="text-xl font-bold text-foreground">Recent Calls</CardTitle>
+          <p className="text-sm text-muted-foreground mt-1">
+            View detailed call logs and conversations
+          </p>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                  <th className="text-left text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Customer
                   </th>
-                  <th className="text-left text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+                  <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Phone
                   </th>
-                  <th className="text-left text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+                  <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Location
                   </th>
-                  <th className="text-left text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+                  <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Duration
                   </th>
-                  <th className="text-left text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+                  <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Status
                   </th>
-                  <th className="text-left text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+                  <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Time
                   </th>
-                  <th className="text-right text-xs font-semibold text-slate-700 dark:text-slate-300 px-6 py-3">
+                  <th className="text-right text-sm font-semibold text-foreground px-6 py-4">
                     Action
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              <tbody className="divide-y divide-border">
                 {filteredCalls.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500 dark:text-slate-400">
+                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-muted-foreground">
                       No calls found in the selected date range
                     </td>
                   </tr>
@@ -176,38 +173,38 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
                   filteredCalls.map((call) => (
                     <tr
                       key={call.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      className="hover:bg-muted/50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        <p className="text-sm font-medium text-foreground">
                           {call.customer}
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <Phone className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Phone className="w-4 h-4" />
                           {call.phone}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <MapPin className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <MapPin className="w-4 h-4" />
                           {call.address}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                          <Clock className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="w-4 h-4" />
                           {call.duration}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium ${getStatusStyle(call.status)}`}>
+                        <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${getStatusStyle(call.status)}`}>
                           {call.status}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                        <span className="text-sm text-muted-foreground">
                           {formatTime(call.timestamp)}
                         </span>
                       </td>
@@ -216,6 +213,7 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedCall(call)}
+                          className="hover:bg-primary/10 hover:text-primary"
                         >
                           View
                         </Button>
@@ -232,50 +230,50 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
       <Dialog open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Call Details</DialogTitle>
+            <DialogTitle className="text-2xl">Call Details</DialogTitle>
           </DialogHeader>
           
           {selectedCall && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-md">
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 p-6 bg-muted/30 rounded-xl border border-border">
                 <div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Customer</p>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{selectedCall.customer}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Customer</p>
+                  <p className="text-base font-semibold text-foreground">{selectedCall.customer}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Phone</p>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{selectedCall.phone}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Phone</p>
+                  <p className="text-base font-semibold text-foreground">{selectedCall.phone}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Duration</p>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{selectedCall.duration}</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Duration</p>
+                  <p className="text-base font-semibold text-foreground">{selectedCall.duration}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Status</p>
-                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${getStatusStyle(selectedCall.status)}`}>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Status</p>
+                  <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-semibold ${getStatusStyle(selectedCall.status)}`}>
                     {selectedCall.status}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Conversation</h4>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <h4 className="text-base font-bold text-foreground">Conversation</h4>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
                   {selectedCall.conversation.map((message, index) => {
                     const isAI = message.startsWith("AI:");
                     return (
                       <div
                         key={index}
-                        className={`p-3 rounded-md ${
+                        className={`p-4 rounded-xl ${
                           isAI 
-                            ? "bg-slate-100 dark:bg-slate-800" 
-                            : "bg-slate-50 dark:bg-slate-900"
+                            ? "bg-primary/5 border border-primary/10" 
+                            : "bg-muted/50 border border-border"
                         }`}
                       >
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        <p className="text-xs font-bold text-muted-foreground mb-2">
                           {isAI ? "AI Agent" : "Customer"}
                         </p>
-                        <p className="text-sm text-slate-900 dark:text-slate-100">
+                        <p className="text-sm text-foreground leading-relaxed">
                           {message.replace(/^(AI:|Customer:)\s*/, "")}
                         </p>
                       </div>

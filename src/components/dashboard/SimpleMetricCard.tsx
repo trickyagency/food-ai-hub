@@ -1,73 +1,57 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
-import { ArrowUp, ArrowDown } from "lucide-react";
 
 interface SimpleMetricCardProps {
   title: string;
-  value: string | number;
+  value: string;
   change?: string;
   icon: LucideIcon;
   trend?: "up" | "down";
   subtitle?: string;
 }
 
-const SimpleMetricCard = ({ 
-  title, 
-  value, 
-  change, 
-  icon: Icon, 
-  trend,
-  subtitle
-}: SimpleMetricCardProps) => {
-  
-  // Professional muted colors based on metric type
+const SimpleMetricCard = ({ title, value, change, icon: Icon, trend, subtitle }: SimpleMetricCardProps) => {
   const getTrendColor = () => {
     if (!trend) return "text-muted-foreground";
-    return trend === "up" ? "text-emerald-600 dark:text-emerald-500" : "text-slate-600 dark:text-slate-400";
+    return trend === "up" ? "text-success" : "text-muted-foreground";
   };
 
   const getIconBackground = () => {
     if (title.includes("Success") || title.includes("Conversion")) {
-      return "bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400";
+      return "bg-success/10 text-success";
     }
     if (title.includes("Duration") || title.includes("Time")) {
-      return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400";
+      return "bg-muted text-muted-foreground";
     }
     if (title.includes("Forward")) {
-      return "bg-sky-50 dark:bg-sky-950 text-sky-600 dark:text-sky-400";
+      return "bg-primary/10 text-primary";
     }
-    return "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
+    return "bg-muted text-foreground";
   };
 
   return (
-    <Card className="group hover:shadow-md transition-all duration-200 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+    <Card className="group hover:shadow-xl transition-all duration-300 border-border bg-card">
       <CardContent className="p-6">
         <div className="flex items-start justify-between mb-4">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getIconBackground()}`}>
+          <div className={`p-3 rounded-xl ${getIconBackground()} transition-transform duration-300 group-hover:scale-110`}>
             <Icon className="w-5 h-5" />
           </div>
+          {change && (
+            <span className={`text-sm font-semibold ${getTrendColor()}`}>
+              {change}
+            </span>
+          )}
         </div>
         
         <div className="space-y-1">
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+          <p className="text-sm font-medium text-muted-foreground">
             {title}
           </p>
-          <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-              {value}
-            </p>
-          </div>
-          
-          {change && (
-            <div className={`flex items-center gap-1 text-sm font-medium ${getTrendColor()}`}>
-              {trend === "up" && <ArrowUp className="w-4 h-4" />}
-              {trend === "down" && <ArrowDown className="w-4 h-4" />}
-              <span>{change}</span>
-            </div>
-          )}
-          
+          <p className="text-3xl font-bold text-foreground tracking-tight">
+            {value}
+          </p>
           {subtitle && (
-            <p className="text-xs text-slate-500 dark:text-slate-500 mt-2">
+            <p className="text-xs text-muted-foreground">
               {subtitle}
             </p>
           )}
