@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      call_summaries: {
+        Row: {
+          action_items: string[] | null
+          call_id: string
+          created_at: string | null
+          id: string
+          key_points: string[] | null
+          outcome: string | null
+          summary: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          action_items?: string[] | null
+          call_id: string
+          created_at?: string | null
+          id?: string
+          key_points?: string[] | null
+          outcome?: string | null
+          summary: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          action_items?: string[] | null
+          call_id?: string
+          created_at?: string | null
+          id?: string
+          key_points?: string[] | null
+          outcome?: string | null
+          summary?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       call_tags: {
         Row: {
           call_id: string

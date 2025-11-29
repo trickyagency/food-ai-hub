@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,11 +7,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VapiCall } from "@/hooks/useVapiCalls";
 import { format } from "date-fns";
-import { Phone, Clock, DollarSign, MessageSquare } from "lucide-react";
+import { Phone, Clock, DollarSign, MessageSquare, Sparkles, Loader2, Volume2, CheckCircle2, ListChecks, Target } from "lucide-react";
 import CallTagManager from "./CallTagManager";
+import { useCallSummary } from "@/hooks/useCallSummary";
 
 interface CallDetailDialogProps {
   call: VapiCall;
@@ -19,6 +22,24 @@ interface CallDetailDialogProps {
 }
 
 const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
+  const { summary, loading: summaryLoading, fetchSummary, generateSummary } = useCallSummary();
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    if (open && call.id) {
+      fetchSummary(call.id);
+    }
+  }, [open, call.id]);
+
+  const handleGenerateSummary = async () => {
+    if (!call.transcript) {
+      return;
+    }
+    setIsGenerating(true);
+    await generateSummary(call.id, call.transcript);
+    setIsGenerating(false);
+  };
+
   const getCallTypeLabel = (type: string) => {
     const types: Record<string, string> = {
       inboundPhoneCall: "Inbound Call",
@@ -167,38 +188,151 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
             </>
           )}
 
-          {/* Transcript */}
-          {call.transcript && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                Transcript
-              </h3>
-              <div className="p-4 bg-muted rounded-lg max-h-[300px] overflow-y-auto">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {call.transcript}
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Audio Player */}
           {call.recordingUrl && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Recording</h3>
-              <audio controls className="w-full">
-                <source src={call.recordingUrl} type="audio/mpeg" />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
+            <>
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-primary" />
+                  Call Recording
+                </h3>
+                <div className="p-4 bg-muted rounded-lg">
+                  <audio controls className="w-full">
+                    <source src={call.recordingUrl} type="audio/mpeg" />
+                    <source src={call.recordingUrl} type="audio/wav" />
+                    <source src={call.recordingUrl} type="audio/webm" />
+                    Your browser does not support the audio element.
+                  </audio>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Use the audio controls to play, pause, and adjust volume
+                  </p>
+                </div>
+              </div>
+              <Separator />
+            </>
           )}
 
-          {/* Summary */}
-          {call.summary && (
+          {/* Transcript */}
+          {call.transcript && (
+            <>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    Transcript
+                  </h3>
+                  {!summary && (
+                    <Button
+                      size="sm"
+                      onClick={handleGenerateSummary}
+                      disabled={isGenerating || summaryLoading}
+                      className="gap-2"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Generate AI Summary
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+                <div className="p-4 bg-muted rounded-lg max-h-[300px] overflow-y-auto">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {call.transcript}
+                  </p>
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
+
+          {/* AI-Generated Summary */}
+          {summary && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Summary</h3>
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
-                <p className="text-sm leading-relaxed">{call.summary}</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  AI Summary
+                </h3>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerateSummary}
+                  disabled={isGenerating || summaryLoading}
+                  className="gap-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Regenerating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Regenerate
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Summary */}
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+                  <p className="text-sm leading-relaxed">{summary.summary}</p>
+                </div>
+
+                {/* Key Points */}
+                {summary.key_points && summary.key_points.length > 0 && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                      Key Points
+                    </h4>
+                    <ul className="space-y-2">
+                      {summary.key_points.map((point, index) => (
+                        <li key={index} className="text-sm flex items-start gap-2">
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Action Items */}
+                {summary.action_items && summary.action_items.length > 0 && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-900">
+                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                      <ListChecks className="w-4 h-4 text-amber-600" />
+                      Action Items
+                    </h4>
+                    <ul className="space-y-2">
+                      {summary.action_items.map((item, index) => (
+                        <li key={index} className="text-sm flex items-start gap-2">
+                          <span className="text-amber-600 mt-0.5">→</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Outcome */}
+                {summary.outcome && (
+                  <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-green-600" />
+                      Outcome
+                    </h4>
+                    <p className="text-sm">{summary.outcome}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
