@@ -53,12 +53,12 @@ const Index = () => {
         {/* Header */}
         <div className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-            <div className="space-y-3">
-              <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
                 Dashboard
               </h1>
-              <p className="text-base text-muted-foreground max-w-2xl">
-                Real-time analytics and insights for your AI calling agent
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Real-time call analytics and performance metrics
               </p>
             </div>
             {canSeeAdvancedMetrics && (
@@ -80,7 +80,7 @@ const Index = () => {
           
           {/* Quick Date Ranges */}
           {canSeeAdvancedMetrics && (
-            <div className="pb-6 border-b border-border/50">
+            <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
               <QuickDateRanges onSelectRange={setDateRange} />
             </div>
           )}

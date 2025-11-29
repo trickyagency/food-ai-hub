@@ -53,7 +53,7 @@ const QuickDateRanges = ({ onSelectRange }: QuickDateRangesProps) => {
             variant="outline"
             size="sm"
             onClick={() => onSelectRange(item.range)}
-            className="text-xs hover:bg-primary/10 hover:border-primary/50 transition-all duration-300"
+            className="text-xs"
           >
             <Icon className="w-3 h-3 mr-1.5" />
             {item.label}
