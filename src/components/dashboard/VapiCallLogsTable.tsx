@@ -86,10 +86,19 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentCalls.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <span className="text-muted-foreground">Loading calls...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : currentCalls.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No calls found
+                      No calls found. Make some calls using Vapi to see them here.
                     </TableCell>
                   </TableRow>
                 ) : (

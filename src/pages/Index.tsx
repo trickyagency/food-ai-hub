@@ -60,21 +60,38 @@ const Index = () => {
           {/* Dashboard Content */}
           {canSeeAdvancedMetrics ? (
             <div className="space-y-8">
-              {/* Metrics Grid */}
-              <VapiMetricsGrid analytics={analytics} loading={isLoading} />
+              {/* Show loading or error states */}
+              {isLoading && calls.length === 0 ? (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="text-center space-y-4">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-lg font-semibold text-foreground">
+                      Loading Vapi data...
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Fetching your call analytics and metrics
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Metrics Grid */}
+                  <VapiMetricsGrid analytics={analytics} loading={false} />
 
-              {/* Cost Breakdown */}
-              <CostBreakdownWidget analytics={analytics} />
+                  {/* Cost Breakdown */}
+                  <CostBreakdownWidget analytics={analytics} />
 
-              {/* Charts */}
-              <CallStatisticsChart analytics={analytics} />
+                  {/* Charts */}
+                  <CallStatisticsChart analytics={analytics} />
 
-              {/* Performance Trends */}
-              <PerformanceTrendsChart />
+                  {/* Performance Trends */}
+                  <PerformanceTrendsChart />
 
-              {/* Call Logs */}
-              {canSeeCallLogs && (
-                <VapiCallLogsTable calls={calls} loading={isLoading} />
+                  {/* Call Logs */}
+                  {canSeeCallLogs && (
+                    <VapiCallLogsTable calls={calls} loading={false} />
+                  )}
+                </>
               )}
             </div>
           ) : (
