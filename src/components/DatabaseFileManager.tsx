@@ -165,6 +165,38 @@ const DatabaseFileManager = () => {
       });
     }
     
+    // Upload to Supabase storage first to get storage path
+    const storagePath = `${user?.id}/${fileId}-${fileData.file.name}`;
+    let storageUploadSuccess = false;
+    
+    if (user) {
+      const { error: storageError } = await supabase.storage
+        .from('database-files')
+        .upload(storagePath, fileData.file);
+      
+      if (storageError) {
+        console.error('Storage upload error:', storageError);
+        toast.error('Failed to upload file to storage');
+        throw new Error(`Storage upload failed: ${storageError.message}`);
+      }
+      
+      storageUploadSuccess = true;
+      
+      // Insert into files table
+      const { error: dbError } = await supabase.from('files').insert({
+        id: fileId,
+        file_name: fileData.file.name,
+        size: fileData.file.size,
+        mime_type: fileData.file.type,
+        storage_path: storagePath,
+        user_id: user.id
+      });
+      
+      if (dbError) {
+        console.error('Database insert error:', dbError);
+      }
+    }
+    
     const formData = new FormData();
     formData.append('file', fileData.file);
     formData.append('fileId', fileId);
@@ -172,6 +204,7 @@ const DatabaseFileManager = () => {
     formData.append('fileSize', fileData.file.size.toString());
     formData.append('mimeType', fileData.file.type);
     formData.append('uploadedAt', new Date().toISOString());
+    formData.append('storagePath', storagePath);
     
     // Add user data
     if (user) {
