@@ -11,6 +11,7 @@ import { z } from "zod";
 import { auditLog } from "@/lib/auditLog";
 
 const WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook-test/databaseupload";
+const DELETE_WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook-test/delete_file";
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
 const fileSchema = z.object({
@@ -286,18 +287,40 @@ const DatabaseFileManager = () => {
     if (!confirm(`Are you sure you want to delete ${file.file_name}?`)) return;
 
     try {
-      const { error: storageError } = await supabase.storage
-        .from("database-files")
-        .remove([file.storage_path]);
+      // Get user data
+      const { data: { user } } = await supabase.auth.getUser();
+      let userRole = null;
+      
+      if (user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+        
+        userRole = roleData?.role;
+      }
 
-      if (storageError) throw storageError;
+      // Send delete request to n8n webhook
+      const response = await fetch(DELETE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileId: file.id,
+          fileName: file.file_name,
+          storagePath: file.storage_path,
+          userId: user?.id,
+          userEmail: user?.email || '',
+          userRole: userRole,
+        }),
+      });
 
-      const { error: dbError } = await supabase
-        .from("files")
-        .delete()
-        .eq("id", file.id);
-
-      if (dbError) throw dbError;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Delete failed: ${response.status} - ${errorText || 'Unknown error'}`);
+      }
 
       await auditLog.fileDeleted(file.file_name || "Unnamed file", file.id);
 
