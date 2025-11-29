@@ -33,7 +33,7 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics, dateRange }: CallMetr
   const avgSeconds = avgDurationSeconds % 60;
 
   return (
-    <div className="p-6 h-full bg-background">
+    <div className="p-6 bg-background">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
         <SimpleMetricCard
           title="Total Calls"
@@ -82,14 +82,14 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics, dateRange }: CallMetr
         ) : (
           <>
             <Card className="col-span-1 bg-muted border-border hover:shadow-md transition-shadow">
-              <CardContent className="p-6 flex items-center justify-center h-full">
+              <CardContent className="p-6 flex items-center justify-center min-h-[120px]">
                 <p className="text-sm text-muted-foreground text-center font-medium">
                   Contact admin for access
                 </p>
               </CardContent>
             </Card>
             <Card className="col-span-1 bg-muted border-border hover:shadow-md transition-shadow">
-              <CardContent className="p-6 flex items-center justify-center h-full">
+              <CardContent className="p-6 flex items-center justify-center min-h-[120px]">
                 <p className="text-sm text-muted-foreground text-center font-medium">
                   Contact admin for access
                 </p>

@@ -7,7 +7,7 @@ interface OrderMetricsWidgetProps {
 
 export const OrderMetricsWidget = ({ dateRange }: OrderMetricsWidgetProps) => {
   return (
-    <div className="p-6 h-full">
+    <div className="p-6">
       <CombinedChart dateRange={dateRange} />
     </div>
   );
