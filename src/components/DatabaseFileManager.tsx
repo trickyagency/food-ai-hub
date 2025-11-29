@@ -128,6 +128,9 @@ const DatabaseFileManager = () => {
     const MAX_RETRIES = 3;
     const fileData = files[index];
     
+    // Generate unique file ID
+    const fileId = crypto.randomUUID();
+    
     // Get user data
     const { data: { user } } = await supabase.auth.getUser();
     let userRole = null;
@@ -144,6 +147,7 @@ const DatabaseFileManager = () => {
     
     const formData = new FormData();
     formData.append('file', fileData.file);
+    formData.append('fileId', fileId);
     formData.append('fileName', fileData.file.name);
     formData.append('fileSize', fileData.file.size.toString());
     formData.append('mimeType', fileData.file.type);
