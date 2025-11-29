@@ -1,1 +1,7 @@
 project_id = "undppzthskqsikywqvwn"
+
+[functions.vapi-proxy]
+verify_jwt = true
+
+[functions.delete-user]
+verify_jwt = true
