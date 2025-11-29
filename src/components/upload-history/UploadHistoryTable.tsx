@@ -4,9 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, CheckCircle2, XCircle, Clock, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, FileText, CheckCircle2, XCircle, Clock, Loader2, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import UploadTimeline from "./UploadTimeline";
+import ExportData from "./ExportData";
 
 interface UploadHistoryRecord {
   id: string;
@@ -32,6 +34,10 @@ const UploadHistoryTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [timelineDialog, setTimelineDialog] = useState<{ open: boolean; fileId: string | null }>({
+    open: false,
+    fileId: null,
+  });
 
   useEffect(() => {
     fetchHistory();
@@ -156,13 +162,18 @@ const UploadHistoryTable = () => {
   return (
     <Card className="bg-gradient-card border-border/50 shadow-elegant">
       <CardHeader>
-        <CardTitle className="text-foreground flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          Upload History Records
-        </CardTitle>
-        <CardDescription>
-          Search by file ID or name and filter by status
-        </CardDescription>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <CardTitle className="text-foreground flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Upload History Records
+            </CardTitle>
+            <CardDescription>
+              Search by file ID or name and filter by status
+            </CardDescription>
+          </div>
+          <ExportData />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search and Filter */}
@@ -238,6 +249,15 @@ const UploadHistoryTable = () => {
                   <div className="flex-shrink-0">
                     {getStatusBadge(record.upload_status)}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTimelineDialog({ open: true, fileId: record.file_id })}
+                    className="flex-shrink-0 hover:bg-primary/10 hover:text-primary"
+                    title="View detailed timeline"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
                 </div>
 
                 {record.error_message && (
@@ -287,6 +307,15 @@ const UploadHistoryTable = () => {
           </div>
         )}
       </CardContent>
+
+      {/* Timeline Dialog */}
+      {timelineDialog.fileId && (
+        <UploadTimeline
+          open={timelineDialog.open}
+          onOpenChange={(open) => setTimelineDialog({ open, fileId: null })}
+          fileId={timelineDialog.fileId}
+        />
+      )}
     </Card>
   );
 };
