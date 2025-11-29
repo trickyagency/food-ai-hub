@@ -107,56 +107,70 @@ const EnhancedCallLogTable = () => {
 
   return (
     <>
-      <Card className="bg-gradient-card border-border/50 shadow-elegant">
-        <CardHeader>
+      <Card className="bg-gradient-card border-border/50 shadow-elegant overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
           <CardTitle className="text-foreground flex items-center gap-2">
             <PhoneCall className="w-5 h-5 text-primary" />
             Recent Calls
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {mockCalls.map((call) => (
-              <div
-                key={call.id}
-                className="flex flex-col gap-3 p-4 rounded-lg bg-card border border-border hover:border-primary/30 transition-all duration-200"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="font-medium text-foreground mb-2">{call.customer}</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {call.phone}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {call.duration}
-                      </span>
-                      <span className="flex items-center gap-1 md:col-span-2">
-                        <MapPin className="w-3 h-3" />
-                        {call.address}
-                      </span>
-                      <span>{call.timestamp}</span>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <div className="min-w-full divide-y divide-border">
+              {mockCalls.map((call, index) => (
+                <div
+                  key={call.id}
+                  className="group hover:bg-muted/30 transition-all duration-300 animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 lg:p-6">
+                    {/* Status Badge - Mobile/Desktop */}
+                    <div className="flex items-center gap-3 lg:w-32 flex-shrink-0">
+                      <Badge className={`${getStatusColor(call.status)} text-xs font-semibold px-3 py-1.5`}>
+                        {getStatusIcon(call.status)}
+                        <span className="ml-1.5 capitalize">{call.status}</span>
+                      </Badge>
+                    </div>
+
+                    {/* Customer Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground mb-2 text-base lg:text-lg truncate">
+                        {call.customer}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 lg:gap-4 text-xs lg:text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">{call.phone}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{call.duration}</span>
+                        </span>
+                        <span className="flex items-center gap-1.5 sm:col-span-2">
+                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">{call.address}</span>
+                        </span>
+                        <span className="text-xs">{call.timestamp}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <div className="flex-shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedCall(call)}
+                        className="w-full lg:w-auto group-hover:border-primary/50 group-hover:bg-primary/5 transition-all duration-300"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        <span className="hidden sm:inline">View Conversation</span>
+                        <span className="sm:hidden">View</span>
+                      </Button>
                     </div>
                   </div>
-                  <Badge className={getStatusColor(call.status)}>
-                    {getStatusIcon(call.status)}
-                    <span className="ml-1 capitalize">{call.status}</span>
-                  </Badge>
                 </div>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedCall(call)}
-                  className="w-full md:w-auto self-start"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  View Conversation
-                </Button>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
