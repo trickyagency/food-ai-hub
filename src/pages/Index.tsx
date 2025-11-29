@@ -4,6 +4,7 @@ import RadialMetricCard from "@/components/dashboard/RadialMetricCard";
 import TimeFilter from "@/components/dashboard/TimeFilter";
 import EnhancedCallLogTable from "@/components/dashboard/EnhancedCallLogTable";
 import OrderMetrics from "@/components/dashboard/OrderMetrics";
+import AdvancedAnalytics from "@/components/dashboard/AdvancedAnalytics";
 import { ProtectedFeature } from "@/components/ProtectedFeature";
 import { Phone, TrendingUp, Clock, CheckCircle2, PhoneForwarded } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -17,20 +18,27 @@ const Index = () => {
 
   // Define what each role can see
   const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
-  const canSeeCallLogs = role !== "viewer"; // Viewers have most limited access
+  const canSeeCallLogs = role !== "viewer";
 
   return (
     <DashboardLayout>
-      <div className="p-8 space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Monitor your AI calling agent performance</p>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
+          <div className="space-y-1 lg:space-y-2">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
+              Dashboard
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Monitor your AI calling agent performance in real-time
+            </p>
             {role && (
-              <p className="text-sm text-muted-foreground capitalize">
-                Role: <span className="font-medium">{role}</span>
-              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <p className="text-xs sm:text-sm font-medium capitalize text-primary">
+                  {role}
+                </p>
+              </div>
             )}
           </div>
           {canSeeAdvancedMetrics && (
@@ -39,7 +47,7 @@ const Index = () => {
         </div>
 
         {/* Call Metrics - Radial Charts */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6">
           <RadialMetricCard
             title="Total Calls"
             value="1,247"
@@ -109,7 +117,18 @@ const Index = () => {
         </div>
 
         {/* Order Metrics */}
-        {canSeeAdvancedMetrics && <OrderMetrics />}
+        {canSeeAdvancedMetrics && (
+          <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <OrderMetrics />
+          </div>
+        )}
+
+        {/* Advanced Analytics */}
+        {canSeeAdvancedMetrics && (
+          <div className="animate-fade-in" style={{ animationDelay: "300ms" }}>
+            <AdvancedAnalytics />
+          </div>
+        )}
 
         {/* Recent Calls - Enhanced with Conversation Viewer */}
         {canSeeCallLogs ? (
