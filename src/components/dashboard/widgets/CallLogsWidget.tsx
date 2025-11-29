@@ -23,7 +23,7 @@ export const CallLogsWidget = ({ dateRange, canSeeCallLogs }: CallLogsWidgetProp
   }
 
   return (
-    <div className="p-6 h-full overflow-auto">
+    <div className="p-6 h-full">
       <ProfessionalCallTable dateRange={dateRange} />
     </div>
   );

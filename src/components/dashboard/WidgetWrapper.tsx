@@ -24,7 +24,7 @@ export const WidgetWrapper = ({ children, title, isDragging }: WidgetWrapperProp
       </div>
       
       {/* Widget Content */}
-      <div className="h-full overflow-auto">
+      <div className="h-full">
         {children}
       </div>
     </div>
