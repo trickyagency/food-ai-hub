@@ -95,12 +95,12 @@ export const DashboardGrid = ({
       isDraggable={true}
       isResizable={false}
       compactType="vertical"
-      preventCollision={false}
+      preventCollision={true}
       margin={[20, 20]}
       containerPadding={[0, 0]}
     >
       {visibleWidgets.map((widgetId) => (
-        <div key={widgetId} className="h-full overflow-visible">
+        <div key={widgetId} className="h-full w-full">
           {renderWidget(widgetId)}
         </div>
       ))}
