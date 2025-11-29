@@ -26,28 +26,20 @@ const Index = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8 animate-fade-in">
+      <div className="p-6 sm:p-8 lg:p-10 space-y-8 animate-fade-in max-w-[1800px] mx-auto">
         {/* Header */}
-        <div className="flex flex-col gap-4 lg:gap-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="space-y-1 lg:space-y-2">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="space-y-3">
+              <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
                 Dashboard
               </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Monitor your AI calling agent performance in real-time
+              <p className="text-base text-muted-foreground max-w-2xl">
+                Real-time analytics and insights for your AI calling agent
               </p>
-              {role && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <p className="text-xs sm:text-sm font-medium capitalize text-primary">
-                    {role}
-                  </p>
-                </div>
-              )}
             </div>
             {canSeeAdvancedMetrics && (
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 lg:pt-1">
                 <TimeFilter selected={timePeriod} onChange={setTimePeriod} />
                 <DateRangePicker 
                   dateRange={dateRange} 
@@ -59,14 +51,14 @@ const Index = () => {
           
           {/* Quick Date Ranges */}
           {canSeeAdvancedMetrics && (
-            <div className="pb-2 border-b border-border/50">
+            <div className="pb-6 border-b border-border/50">
               <QuickDateRanges onSelectRange={setDateRange} />
             </div>
           )}
         </div>
 
         {/* Call Metrics - Radial Charts */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           <RadialMetricCard
             title="Total Calls"
             value="1,247"
@@ -117,17 +109,17 @@ const Index = () => {
             </>
           ) : (
             <>
-              <Card className="col-span-1">
+              <Card className="col-span-1 bg-muted/30 border-dashed">
                 <CardContent className="p-6 flex items-center justify-center h-full">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Contact admin for access
+                  <p className="text-sm text-muted-foreground text-center font-medium">
+                    Upgrade for advanced metrics
                   </p>
                 </CardContent>
               </Card>
-              <Card className="col-span-1">
+              <Card className="col-span-1 bg-muted/30 border-dashed">
                 <CardContent className="p-6 flex items-center justify-center h-full">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Contact admin for access
+                  <p className="text-sm text-muted-foreground text-center font-medium">
+                    Upgrade for advanced metrics
                   </p>
                 </CardContent>
               </Card>
@@ -153,10 +145,10 @@ const Index = () => {
         {canSeeCallLogs ? (
           <EnhancedCallLogTable dateRange={dateRange} />
         ) : (
-          <Card>
+          <Card className="bg-muted/30 border-dashed">
             <CardContent className="py-12">
               <div className="text-center space-y-2">
-                <p className="text-muted-foreground">
+                <p className="text-base font-medium text-muted-foreground">
                   You don't have permission to view call logs
                 </p>
                 <p className="text-sm text-muted-foreground">

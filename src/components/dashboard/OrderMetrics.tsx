@@ -55,20 +55,20 @@ const OrderMetrics = ({ dateRange }: OrderMetricsProps) => {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title} className="bg-gradient-card border-border/50 shadow-elegant hover:shadow-glow transition-all duration-300">
-              <CardContent className="p-6">
+            <Card key={stat.title} className="bg-card border border-border/60 shadow-elegant hover:shadow-lg transition-all duration-300 group">
+              <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`w-11 h-11 rounded-lg ${stat.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className={`w-5 h-5 ${stat.color}`} />
                   </div>
                 </div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">{stat.title}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{stat.title}</p>
                 <p className="text-3xl font-bold text-foreground mb-2">{stat.value}</p>
-                <p className={`text-sm font-medium ${stat.change.startsWith('+') ? 'text-success' : 'text-destructive'}`}>
+                <p className={`text-xs font-semibold ${stat.change.startsWith('+') ? 'text-success' : 'text-destructive'}`}>
                   {stat.change}
                 </p>
               </CardContent>
@@ -78,15 +78,17 @@ const OrderMetrics = ({ dateRange }: OrderMetricsProps) => {
       </div>
 
       {/* Chart */}
-      <Card className="bg-gradient-card border-border/50 shadow-elegant">
-        <CardHeader>
+      <Card className="bg-card border border-border/60 shadow-elegant hover:shadow-lg transition-all duration-300">
+        <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="text-foreground flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-primary" />
+            <CardTitle className="text-xl font-bold text-foreground flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                <ShoppingCart className="w-4 h-4 text-primary" />
+              </div>
               Order Distribution
             </CardTitle>
             {dateRange?.from && dateRange?.to && (
-              <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5">
+              <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5 font-semibold">
                 <Calendar className="w-3 h-3" />
                 <span className="text-xs">
                   {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}

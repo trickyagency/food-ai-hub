@@ -31,15 +31,17 @@ interface AdvancedAnalyticsProps {
 
 const AdvancedAnalytics = ({ dateRange }: AdvancedAnalyticsProps) => {
   return (
-    <Card className="bg-gradient-card border-border/50 shadow-elegant">
-      <CardHeader>
+    <Card className="bg-card border border-border/60 shadow-elegant hover:shadow-lg transition-all duration-300">
+      <CardHeader className="pb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <CardTitle className="text-foreground flex items-center gap-2">
-            <Activity className="w-5 h-5 text-primary" />
+          <CardTitle className="text-xl font-bold text-foreground flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-primary" />
+            </div>
             Advanced Analytics
           </CardTitle>
           {dateRange?.from && dateRange?.to && (
-            <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5">
+            <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5 font-semibold">
               <Calendar className="w-3 h-3" />
               <span className="text-xs">
                 {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}
