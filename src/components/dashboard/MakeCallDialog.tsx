@@ -35,7 +35,7 @@ export const MakeCallDialog = () => {
           endpoint: "/call",
           method: "POST",
           assistantId: selectedAssistant,
-          ...(selectedPhoneNumber && { phoneNumberId: selectedPhoneNumber }),
+          ...(selectedPhoneNumber && selectedPhoneNumber !== "default" && { phoneNumberId: selectedPhoneNumber }),
           customer: {
             number: phoneNumber,
           },
@@ -119,7 +119,7 @@ export const MakeCallDialog = () => {
                 <SelectValue placeholder={phoneNumbersLoading ? "Loading numbers..." : "Use default or select"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Use Default</SelectItem>
+                <SelectItem value="default">Use Default</SelectItem>
                 {phoneNumbers.map((number) => (
                   <SelectItem key={number.id} value={number.id}>
                     {number.name || number.number}
