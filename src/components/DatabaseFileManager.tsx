@@ -128,6 +128,7 @@ const DatabaseFileManager = () => {
   const uploadFileWithRetry = async (index: number, retryCount = 0): Promise<void> => {
     const MAX_RETRIES = 3;
     const fileData = files[index];
+    const BUCKET_NAME = 'database-files';
     
     // Generate unique file ID (reuse if retrying)
     const fileId = fileData.fileId || crypto.randomUUID();
@@ -151,6 +152,58 @@ const DatabaseFileManager = () => {
       userRole = roleData?.role;
     }
     
+    // Validate bucket exists before upload (only check on first attempt)
+    if (retryCount === 0) {
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      
+      if (bucketError) {
+        const errorMessage = `Failed to validate storage bucket: ${bucketError.message}`;
+        console.error(errorMessage);
+        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+        toast.error(`Bucket validation failed for ${fileData.file.name}`);
+        
+        if (user) {
+          await supabase.from('file_upload_history').insert({
+            file_id: fileId,
+            file_name: fileData.file.name,
+            file_size: fileData.file.size,
+            mime_type: fileData.file.type,
+            user_id: user.id,
+            upload_status: 'failed',
+            webhook_url: WEBHOOK_URL,
+            retry_count: 0,
+            error_message: errorMessage,
+            completed_at: new Date().toISOString()
+          });
+        }
+        return;
+      }
+      
+      const bucketExists = buckets?.some(bucket => bucket.name === BUCKET_NAME);
+      if (!bucketExists) {
+        const errorMessage = `Storage bucket '${BUCKET_NAME}' not found. Please contact support.`;
+        console.error(errorMessage);
+        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+        toast.error(`Bucket mismatch: ${BUCKET_NAME} not found`);
+        
+        if (user) {
+          await supabase.from('file_upload_history').insert({
+            file_id: fileId,
+            file_name: fileData.file.name,
+            file_size: fileData.file.size,
+            mime_type: fileData.file.type,
+            user_id: user.id,
+            upload_status: 'failed',
+            webhook_url: WEBHOOK_URL,
+            retry_count: 0,
+            error_message: errorMessage,
+            completed_at: new Date().toISOString()
+          });
+        }
+        return;
+      }
+    }
+    
     // Create upload history record
     if (user && retryCount === 0) {
       await supabase.from('file_upload_history').insert({
@@ -171,7 +224,7 @@ const DatabaseFileManager = () => {
     
     if (user) {
       const { error: storageError } = await supabase.storage
-        .from('database-files')
+        .from(BUCKET_NAME)
         .upload(storagePath, fileData.file);
       
       if (storageError) {
@@ -205,7 +258,7 @@ const DatabaseFileManager = () => {
     formData.append('mimeType', fileData.file.type);
     formData.append('uploadedAt', new Date().toISOString());
     formData.append('storagePath', storagePath);
-    formData.append('bucketName', bucketName); // Explicit bucket name for n8n
+    formData.append('bucketName', BUCKET_NAME); // Explicit bucket name for n8n
     
     // Add user data
     if (user) {
@@ -237,7 +290,7 @@ const DatabaseFileManager = () => {
     // Verify file exists in storage before sending webhook
     if (user) {
       const { data: verifyData, error: verifyError } = await supabase.storage
-        .from('database-files')
+        .from(BUCKET_NAME)
         .list(user.id, {
           search: `${fileId}-${fileData.file.name}`
         });
@@ -352,7 +405,7 @@ const DatabaseFileManager = () => {
         if (user) {
           // Delete file from storage
           const { error: deleteStorageError } = await supabase.storage
-            .from('database-files')
+            .from(BUCKET_NAME)
             .remove([storagePath]);
           
           if (deleteStorageError) {
