@@ -41,6 +41,7 @@ interface FileRecord {
   mime_type: string | null;
   storage_path: string;
   created_at: string | null;
+  updated_at: string | null;
   user_id: string;
 }
 
@@ -301,7 +302,7 @@ const DatabaseFileManager = () => {
         userRole = roleData?.role;
       }
 
-      // Send delete request to n8n webhook
+      // Send delete request to n8n webhook with complete file metadata
       const response = await fetch(DELETE_WEBHOOK_URL, {
         method: 'POST',
         headers: {
@@ -311,6 +312,10 @@ const DatabaseFileManager = () => {
           fileId: file.id,
           fileName: file.file_name,
           storagePath: file.storage_path,
+          fileSize: file.size,
+          mimeType: file.mime_type,
+          createdAt: file.created_at,
+          updatedAt: file.updated_at,
           userId: user?.id,
           userEmail: user?.email || '',
           userRole: userRole,
