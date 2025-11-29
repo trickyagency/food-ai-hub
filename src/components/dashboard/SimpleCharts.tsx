@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { DateRange } from "react-day-picker";
-import { ShoppingCart, Activity } from "lucide-react";
+import { Activity } from "lucide-react";
 
 // Generate data based on date range
-const generateData = (days: number) => {
+export const generateData = (days: number) => {
   const data = [];
   const now = new Date();
   
@@ -27,7 +27,7 @@ interface SimpleChartsProps {
   dateRange?: DateRange;
 }
 
-export const CallsChart = ({ dateRange }: SimpleChartsProps) => {
+export const CombinedChart = ({ dateRange }: SimpleChartsProps) => {
   // Calculate days between range or default to 7
   const days = dateRange?.from && dateRange?.to
     ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1
@@ -40,10 +40,10 @@ export const CallsChart = ({ dateRange }: SimpleChartsProps) => {
       <CardHeader className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
         <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
           <Activity className="w-5 h-5" />
-          Call Performance
+          Performance Overview
         </CardTitle>
         <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-          Daily call volume and success rate
+          Call metrics and order volume trends
         </p>
       </CardHeader>
       <CardContent className="p-6">
@@ -69,6 +69,9 @@ export const CallsChart = ({ dateRange }: SimpleChartsProps) => {
                 fontSize: '12px',
               }}
             />
+            <Legend 
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+            />
             <Line 
               type="monotone" 
               dataKey="calls" 
@@ -83,63 +86,17 @@ export const CallsChart = ({ dateRange }: SimpleChartsProps) => {
               stroke="#10b981" 
               strokeWidth={2}
               dot={{ fill: '#10b981', r: 3 }}
-              name="Successful"
+              name="Successful Calls"
             />
-          </LineChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  );
-};
-
-export const OrdersChart = ({ dateRange }: SimpleChartsProps) => {
-  const days = dateRange?.from && dateRange?.to
-    ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1
-    : 7;
-  
-  const data = generateData(Math.min(days, 30));
-
-  return (
-    <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-      <CardHeader className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-        <CardTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-          <ShoppingCart className="w-5 h-5" />
-          Order Volume
-        </CardTitle>
-        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-          Daily order processing trends
-        </p>
-      </CardHeader>
-      <CardContent className="p-6">
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-slate-800" />
-            <XAxis 
-              dataKey="date" 
-              stroke="#64748b"
-              fontSize={12}
-              tickMargin={10}
-            />
-            <YAxis 
-              stroke="#64748b"
-              fontSize={12}
-              tickMargin={10}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.375rem',
-                fontSize: '12px',
-              }}
-            />
-            <Bar 
+            <Line 
+              type="monotone" 
               dataKey="orders" 
-              fill="#334155"
-              radius={[4, 4, 0, 0]}
+              stroke="#64748b" 
+              strokeWidth={2}
+              dot={{ fill: '#64748b', r: 3 }}
               name="Orders"
             />
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

@@ -1,18 +1,43 @@
 import SimpleMetricCard from "@/components/dashboard/SimpleMetricCard";
 import { Phone, TrendingUp, Clock, CheckCircle2, PhoneForwarded } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { DateRange } from "react-day-picker";
+import { generateData } from "@/components/dashboard/SimpleCharts";
 
 interface CallMetricsWidgetProps {
   canSeeAdvancedMetrics: boolean;
+  dateRange?: DateRange;
 }
 
-export const CallMetricsWidget = ({ canSeeAdvancedMetrics }: CallMetricsWidgetProps) => {
+export const CallMetricsWidget = ({ canSeeAdvancedMetrics, dateRange }: CallMetricsWidgetProps) => {
+  // Calculate metrics based on date range
+  const days = dateRange?.from && dateRange?.to
+    ? Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 7;
+  
+  const data = generateData(Math.min(days, 30));
+  
+  // Calculate totals from the data
+  const totalCalls = data.reduce((sum, day) => sum + day.calls, 0);
+  const totalSuccess = data.reduce((sum, day) => sum + day.success, 0);
+  const totalOrders = data.reduce((sum, day) => sum + day.orders, 0);
+  const successRate = totalCalls > 0 ? ((totalSuccess / totalCalls) * 100).toFixed(1) : "0.0";
+  const conversionRate = totalCalls > 0 ? ((totalOrders / totalCalls) * 100).toFixed(1) : "0.0";
+  
+  // Calculate forwarded calls (approximately 27% of total)
+  const forwardedCalls = Math.floor(totalCalls * 0.27);
+  
+  // Calculate average duration in minutes and seconds
+  const avgDurationSeconds = 204; // Fixed average
+  const avgMinutes = Math.floor(avgDurationSeconds / 60);
+  const avgSeconds = avgDurationSeconds % 60;
+
   return (
     <div className="p-6 h-full overflow-auto bg-slate-50 dark:bg-slate-950">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <SimpleMetricCard
           title="Total Calls"
-          value="1,247"
+          value={totalCalls.toLocaleString()}
           change="+12.5%"
           icon={Phone}
           trend="up"
@@ -20,7 +45,7 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics }: CallMetricsWidgetPr
         />
         <SimpleMetricCard
           title="Forwarded"
-          value="342"
+          value={forwardedCalls.toLocaleString()}
           change="+8.2%"
           icon={PhoneForwarded}
           trend="up"
@@ -28,7 +53,7 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics }: CallMetricsWidgetPr
         />
         <SimpleMetricCard
           title="Success Rate"
-          value="94.2%"
+          value={`${successRate}%`}
           change="+2.4%"
           icon={CheckCircle2}
           trend="up"
@@ -39,7 +64,7 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics }: CallMetricsWidgetPr
           <>
             <SimpleMetricCard
               title="Avg. Duration"
-              value="3m 24s"
+              value={`${avgMinutes}m ${avgSeconds}s`}
               change="-0.8%"
               icon={Clock}
               trend="down"
@@ -47,7 +72,7 @@ export const CallMetricsWidget = ({ canSeeAdvancedMetrics }: CallMetricsWidgetPr
             />
             <SimpleMetricCard
               title="Conversion"
-              value="67.8%"
+              value={`${conversionRate}%`}
               change="+5.1%"
               icon={TrendingUp}
               trend="up"
