@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VapiCall } from "@/hooks/useVapiCalls";
 import { format } from "date-fns";
-import { Phone, Clock, DollarSign, MessageSquare, Sparkles, Loader2, Volume2, CheckCircle2, ListChecks, Target } from "lucide-react";
+import { Phone, Clock, DollarSign, MessageSquare, Sparkles, Loader2, Volume2, CheckCircle2, ListChecks, Target, Download } from "lucide-react";
 import CallTagManager from "./CallTagManager";
 import { useCallSummary } from "@/hooks/useCallSummary";
 
@@ -192,20 +192,70 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
           {call.recordingUrl && (
             <>
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Volume2 className="w-5 h-5 text-primary" />
+                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   Call Recording
                 </h3>
-                <div className="p-4 bg-muted rounded-lg">
+                <div className="p-4 bg-muted rounded-lg space-y-3">
                   <audio controls className="w-full">
                     <source src={call.recordingUrl} type="audio/mpeg" />
                     <source src={call.recordingUrl} type="audio/wav" />
                     <source src={call.recordingUrl} type="audio/webm" />
                     Your browser does not support the audio element.
                   </audio>
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground">
                     Use the audio controls to play, pause, and adjust volume
                   </p>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(call.recordingUrl);
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `call-recording-${call.id}.mp3`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        } catch (error) {
+                          console.error("Download error:", error);
+                        }
+                      }}
+                      className="gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download MP3
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(call.recordingUrl);
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `call-recording-${call.id}.wav`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+                        } catch (error) {
+                          console.error("Download error:", error);
+                        }
+                      }}
+                      className="gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download WAV
+                    </Button>
+                  </div>
                 </div>
               </div>
               <Separator />
