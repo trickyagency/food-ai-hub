@@ -135,9 +135,9 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
           </p>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-96 overflow-y-auto">
+          <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="sticky top-0 z-10">
+              <thead>
                 <tr className="border-b border-border bg-muted/50">
                   <th className="text-left text-sm font-semibold text-foreground px-6 py-4">
                     Customer
@@ -258,7 +258,7 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
 
               <div className="space-y-3">
                 <h4 className="text-base font-bold text-foreground">Conversation</h4>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3">
                   {selectedCall.conversation.map((message, index) => {
                     const isAI = message.startsWith("AI:");
                     return (
