@@ -32,6 +32,7 @@ interface UploadedFile {
   file: File;
   status: "pending" | "uploading" | "success" | "error";
   progress: number;
+  fileId?: string;
 }
 
 interface FileRecord {
@@ -128,8 +129,13 @@ const DatabaseFileManager = () => {
     const MAX_RETRIES = 3;
     const fileData = files[index];
     
-    // Generate unique file ID
-    const fileId = crypto.randomUUID();
+    // Generate unique file ID (reuse if retrying)
+    const fileId = fileData.fileId || crypto.randomUUID();
+    
+    // Update files state with fileId
+    if (!fileData.fileId) {
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, fileId } : f));
+    }
     
     // Get user data
     const { data: { user } } = await supabase.auth.getUser();
@@ -143,6 +149,20 @@ const DatabaseFileManager = () => {
         .single();
       
       userRole = roleData?.role;
+    }
+    
+    // Create upload history record
+    if (user && retryCount === 0) {
+      await supabase.from('file_upload_history').insert({
+        file_id: fileId,
+        file_name: fileData.file.name,
+        file_size: fileData.file.size,
+        mime_type: fileData.file.type,
+        user_id: user.id,
+        upload_status: 'pending',
+        webhook_url: WEBHOOK_URL,
+        retry_count: 0
+      });
     }
     
     const formData = new FormData();
@@ -199,7 +219,17 @@ const DatabaseFileManager = () => {
 
       if (response.ok) {
         console.log('n8n webhook response:', responseData || responseText);
-        toast.success(`${fileData.file.name} uploaded successfully${responseData ? `: ${JSON.stringify(responseData)}` : ''}`);
+        
+        // Update upload history to success
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('file_upload_history').update({
+            upload_status: 'success',
+            completed_at: new Date().toISOString()
+          }).eq('file_id', fileId).eq('user_id', user.id);
+        }
+        
+        toast.success(`${fileData.file.name} uploaded successfully with ID: ${fileId}`);
         
         setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "success" as const, progress: 100 } : f));
         
@@ -220,6 +250,15 @@ const DatabaseFileManager = () => {
         const backoffDelay = Math.pow(2, retryCount) * 1000;
         toast.info(`Retrying upload for ${fileData.file.name} in ${backoffDelay / 1000}s... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
         
+        // Update upload history with retry attempt
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('file_upload_history').update({
+            upload_status: 'uploading',
+            retry_count: retryCount + 1
+          }).eq('file_id', fileId).eq('user_id', user.id);
+        }
+        
         await new Promise(resolve => setTimeout(resolve, backoffDelay));
         return uploadFileWithRetry(index, retryCount + 1);
       } else {
@@ -230,6 +269,14 @@ const DatabaseFileManager = () => {
         // Store final failure in database
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Update upload history to failed
+          await supabase.from('file_upload_history').update({
+            upload_status: 'failed',
+            error_message: errorMessage,
+            retry_count: retryCount,
+            completed_at: new Date().toISOString()
+          }).eq('file_id', fileId).eq('user_id', user.id);
+          
           await supabase.from('webhook_responses').insert({
             user_id: user.id,
             file_name: fileData.file.name,
@@ -458,7 +505,12 @@ const DatabaseFileManager = () => {
                     <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{fileData.file.name}</p>
-                      <p className="text-xs text-muted-foreground">{formatFileSize(fileData.file.size)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-muted-foreground">{formatFileSize(fileData.file.size)}</p>
+                        {fileData.fileId && (
+                          <p className="text-xs text-primary font-mono">ID: {fileData.fileId.slice(0, 8)}...</p>
+                        )}
+                      </div>
                     </div>
                     {fileData.status === "success" && (
                       <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
