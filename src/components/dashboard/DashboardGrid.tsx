@@ -87,15 +87,13 @@ export const DashboardGrid = ({
       layouts={filteredLayouts}
       breakpoints={{ lg: 1200, md: 996, sm: 768 }}
       cols={{ lg: 12, md: 10, sm: 6 }}
-      rowHeight={80}
+      rowHeight={60}
       onLayoutChange={handleLayoutChange}
       onDragStart={() => setIsDragging(true)}
       onDragStop={() => setIsDragging(false)}
-      onResizeStart={() => setIsDragging(true)}
-      onResizeStop={() => setIsDragging(false)}
       draggableHandle=".cursor-grab"
       isDraggable={true}
-      isResizable={true}
+      isResizable={false}
       compactType="vertical"
       preventCollision={false}
       margin={[20, 20]}

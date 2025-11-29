@@ -11,7 +11,7 @@ export const WidgetWrapper = ({ children, title, isDragging }: WidgetWrapperProp
   return (
     <div 
       className={`
-        relative h-full overflow-hidden bg-card border border-border rounded-xl shadow-md hover:shadow-xl
+        relative overflow-visible bg-card border border-border rounded-xl shadow-md hover:shadow-xl
         transition-all duration-300
         ${isDragging ? "opacity-50 cursor-grabbing" : ""}
       `}
@@ -24,7 +24,7 @@ export const WidgetWrapper = ({ children, title, isDragging }: WidgetWrapperProp
       </div>
       
       {/* Widget Content */}
-      <div className="h-full">
+      <div>
         {children}
       </div>
     </div>

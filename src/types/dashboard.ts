@@ -67,21 +67,21 @@ export const AVAILABLE_WIDGETS: DashboardWidget[] = [
 
 export const DEFAULT_LAYOUTS = {
   lg: [
-    { i: "call-metrics", x: 0, y: 0, w: 12, h: 2, minW: 3, minH: 2 },
-    { i: "order-metrics", x: 0, y: 2, w: 12, h: 3, minW: 4, minH: 3 },
-    { i: "analytics", x: 0, y: 5, w: 12, h: 4, minW: 4, minH: 4 },
-    { i: "call-logs", x: 0, y: 9, w: 12, h: 4, minW: 6, minH: 4 },
+    { i: "call-metrics", x: 0, y: 0, w: 12, h: 3, minW: 3, minH: 2, static: true },
+    { i: "order-metrics", x: 0, y: 3, w: 12, h: 5, minW: 4, minH: 3, static: true },
+    { i: "analytics", x: 0, y: 8, w: 12, h: 5, minW: 4, minH: 4, static: true },
+    { i: "call-logs", x: 0, y: 13, w: 12, h: 10, minW: 6, minH: 4, static: true },
   ],
   md: [
-    { i: "call-metrics", x: 0, y: 0, w: 10, h: 2, minW: 3, minH: 2 },
-    { i: "order-metrics", x: 0, y: 2, w: 10, h: 3, minW: 4, minH: 3 },
-    { i: "analytics", x: 0, y: 5, w: 10, h: 4, minW: 4, minH: 4 },
-    { i: "call-logs", x: 0, y: 9, w: 10, h: 4, minW: 6, minH: 4 },
+    { i: "call-metrics", x: 0, y: 0, w: 10, h: 3, minW: 3, minH: 2, static: true },
+    { i: "order-metrics", x: 0, y: 3, w: 10, h: 5, minW: 4, minH: 3, static: true },
+    { i: "analytics", x: 0, y: 8, w: 10, h: 5, minW: 4, minH: 4, static: true },
+    { i: "call-logs", x: 0, y: 13, w: 10, h: 10, minW: 6, minH: 4, static: true },
   ],
   sm: [
-    { i: "call-metrics", x: 0, y: 0, w: 6, h: 2, minW: 3, minH: 2 },
-    { i: "order-metrics", x: 0, y: 2, w: 6, h: 3, minW: 4, minH: 3 },
-    { i: "analytics", x: 0, y: 5, w: 6, h: 4, minW: 4, minH: 4 },
-    { i: "call-logs", x: 0, y: 9, w: 6, h: 4, minW: 6, minH: 4 },
+    { i: "call-metrics", x: 0, y: 0, w: 6, h: 3, minW: 3, minH: 2, static: true },
+    { i: "order-metrics", x: 0, y: 3, w: 6, h: 5, minW: 4, minH: 3, static: true },
+    { i: "analytics", x: 0, y: 8, w: 6, h: 5, minW: 4, minH: 4, static: true },
+    { i: "call-logs", x: 0, y: 13, w: 6, h: 10, minW: 6, minH: 4, static: true },
   ],
 };
