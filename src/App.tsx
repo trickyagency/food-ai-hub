@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import RealtimeNotifications from "./components/RealtimeNotifications";
+import UploadFailureMonitor from "./components/upload-history/UploadFailureMonitor";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import UploadHistory from "./pages/UploadHistory";
@@ -20,6 +21,7 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <RealtimeNotifications />
+        <UploadFailureMonitor />
         <Toaster />
         <Sonner />
         <BrowserRouter>
