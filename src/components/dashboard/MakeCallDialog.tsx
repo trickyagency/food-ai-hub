@@ -9,6 +9,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
 import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
+import { z } from "zod";
+
+const phoneNumberSchema = z.string()
+  .trim()
+  .regex(/^\+[1-9]\d{1,14}$/, "Phone number must be in international format (e.g., +1234567890)")
+  .min(8, "Phone number is too short")
+  .max(16, "Phone number is too long");
 
 export const MakeCallDialog = () => {
   const [open, setOpen] = useState(false);
@@ -16,6 +23,7 @@ export const MakeCallDialog = () => {
   const [selectedAssistant, setSelectedAssistant] = useState("");
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const { assistants, loading: assistantsLoading } = useVapiAssistants();
   const { phoneNumbers, loading: phoneNumbersLoading } = useVapiPhoneNumbers();
@@ -26,6 +34,16 @@ export const MakeCallDialog = () => {
       return;
     }
 
+    // Validate phone number format
+    const validation = phoneNumberSchema.safeParse(phoneNumber);
+    if (!validation.success) {
+      const errorMessage = validation.error.errors[0]?.message || "Invalid phone number format";
+      setPhoneError(errorMessage);
+      toast.error(errorMessage);
+      return;
+    }
+
+    setPhoneError(null);
     setIsLoading(true);
     try {
       console.log("Initiating outbound call...", { phoneNumber, selectedAssistant, selectedPhoneNumber });
@@ -91,9 +109,19 @@ export const MakeCallDialog = () => {
               type="tel"
               placeholder="+1234567890"
               value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
+              onChange={(e) => {
+                setPhoneNumber(e.target.value);
+                setPhoneError(null);
+              }}
               disabled={isLoading}
+              className={phoneError ? "border-destructive" : ""}
             />
+            {phoneError && (
+              <p className="text-sm text-destructive">{phoneError}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Must include country code (e.g., +1 for US, +44 for UK)
+            </p>
           </div>
 
           <div className="space-y-2">
