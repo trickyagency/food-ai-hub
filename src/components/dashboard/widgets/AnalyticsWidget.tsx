@@ -1,4 +1,4 @@
-import { CallsChart } from "@/components/dashboard/SimpleCharts";
+import { CombinedChart } from "@/components/dashboard/SimpleCharts";
 import { DateRange } from "react-day-picker";
 
 interface AnalyticsWidgetProps {
@@ -8,7 +8,7 @@ interface AnalyticsWidgetProps {
 export const AnalyticsWidget = ({ dateRange }: AnalyticsWidgetProps) => {
   return (
     <div className="p-6 h-full overflow-auto">
-      <CallsChart dateRange={dateRange} />
+      <CombinedChart dateRange={dateRange} />
     </div>
   );
 };

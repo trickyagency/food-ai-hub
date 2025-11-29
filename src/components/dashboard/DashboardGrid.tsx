@@ -46,7 +46,7 @@ export const DashboardGrid = ({
       case "call-metrics":
         return (
           <WidgetWrapper isDragging={isDragging}>
-            <CallMetricsWidget canSeeAdvancedMetrics={canSeeAdvancedMetrics} />
+            <CallMetricsWidget canSeeAdvancedMetrics={canSeeAdvancedMetrics} dateRange={dateRange} />
           </WidgetWrapper>
         );
       case "order-metrics":

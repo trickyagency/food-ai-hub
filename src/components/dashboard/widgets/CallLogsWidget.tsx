@@ -1,5 +1,4 @@
 import ProfessionalCallTable from "@/components/dashboard/ProfessionalCallTable";
-import { CallsChart, OrdersChart } from "@/components/dashboard/SimpleCharts";
 import { DateRange } from "react-day-picker";
 
 interface CallLogsWidgetProps {
