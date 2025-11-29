@@ -21,20 +21,20 @@ const CallStatisticsChart = ({ analytics }: CallStatisticsChartProps) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       <Card className="border-border/50 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Call Status Distribution</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Call Status Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={280} className="sm:h-[300px]">
             <PieChart>
               <Pie
                 data={statusData}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={100}
+                innerRadius={50}
+                outerRadius={90}
                 paddingAngle={4}
                 dataKey="value"
               >
@@ -47,14 +47,16 @@ const CallStatisticsChart = ({ analytics }: CallStatisticsChartProps) => {
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
+                  fontSize: "14px",
                 }}
               />
               <Legend
                 verticalAlign="bottom"
                 height={36}
                 iconType="circle"
+                wrapperStyle={{ fontSize: "12px" }}
                 formatter={(value, entry: any) => (
-                  <span className="text-sm text-foreground">
+                  <span className="text-xs sm:text-sm text-foreground">
                     {value}: {entry.payload.value}
                   </span>
                 )}
@@ -66,17 +68,17 @@ const CallStatisticsChart = ({ analytics }: CallStatisticsChartProps) => {
 
       <Card className="border-border/50 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Call Type Distribution</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Call Type Distribution</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={280} className="sm:h-[300px]">
             <PieChart>
               <Pie
                 data={typeData}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
-                outerRadius={100}
+                innerRadius={50}
+                outerRadius={90}
                 paddingAngle={4}
                 dataKey="value"
               >
@@ -89,14 +91,16 @@ const CallStatisticsChart = ({ analytics }: CallStatisticsChartProps) => {
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
+                  fontSize: "14px",
                 }}
               />
               <Legend
                 verticalAlign="bottom"
                 height={36}
                 iconType="circle"
+                wrapperStyle={{ fontSize: "12px" }}
                 formatter={(value, entry: any) => (
-                  <span className="text-sm text-foreground">
+                  <span className="text-xs sm:text-sm text-foreground">
                     {value}: {entry.payload.value}
                   </span>
                 )}

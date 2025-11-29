@@ -5,6 +5,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useVapiAnalytics } from "@/hooks/useVapiAnalytics";
 import { useVapiCalls } from "@/hooks/useVapiCalls";
 import { useFilteredCalls } from "@/hooks/useFilteredCalls";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import VapiMetricsGrid from "@/components/dashboard/VapiMetricsGrid";
 import CallStatisticsChart from "@/components/dashboard/CallStatisticsChart";
 import CostBreakdownWidget from "@/components/dashboard/CostBreakdownWidget";
@@ -18,6 +19,7 @@ import { MakeCallDialog } from "@/components/dashboard/MakeCallDialog";
 import { AssistantsWidget } from "@/components/dashboard/AssistantsWidget";
 import { PhoneNumbersWidget } from "@/components/dashboard/PhoneNumbersWidget";
 import { AccountOverviewWidget } from "@/components/dashboard/AccountOverviewWidget";
+import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Activity, Phone, Settings } from "lucide-react";
 
@@ -54,16 +56,30 @@ const Index = () => {
   const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
   const canSeeCallLogs = role !== "viewer";
 
-  const handleRefresh = () => {
-    refreshAnalytics();
+  const handleRefresh = async () => {
+    await refreshAnalytics();
   };
 
   const isLoading = analyticsLoading;
+
+  // Pull to refresh for mobile
+  const { pullDistance, isRefreshing, isPulling, shouldTrigger } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+    maxPullDistance: 150,
+  });
 
   return (
     <DashboardLayout>
       <PageTransition>
         <div className="p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
+          {/* Pull to Refresh Indicator */}
+          <PullToRefreshIndicator
+            pullDistance={pullDistance}
+            isRefreshing={isRefreshing}
+            shouldTrigger={shouldTrigger}
+          />
+          
           {/* Header */}
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
