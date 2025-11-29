@@ -8,16 +8,16 @@ import { ShieldAlert } from "lucide-react";
 const Upload = () => {
   return (
     <DashboardLayout>
-      <div className="p-8 space-y-8">
+      <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto">
         {/* Header */}
-        <div className="space-y-2">
+        <div className="space-y-3 pb-6 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-sm">
               <Database className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-foreground">Database Files</h1>
-              <p className="text-muted-foreground">Manage your food business database files</p>
+              <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">Database Files</h1>
+              <p className="text-base text-muted-foreground">Manage and organize your food business database files</p>
             </div>
           </div>
         </div>

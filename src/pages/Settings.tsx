@@ -17,41 +17,41 @@ const Settings = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-8 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+      <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto">
+        <div className="space-y-3 pb-6 border-b border-border/50">
+          <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">Settings</h1>
+          <p className="text-base text-muted-foreground">Manage your account settings and preferences</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="profile" className="flex items-center gap-2">
+          <TabsList className="bg-muted/50 p-1">
+            <TabsTrigger value="profile" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <User className="h-4 w-4" />
-              Profile
+              <span className="hidden sm:inline">Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-2">
+            <TabsTrigger value="security" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Shield className="h-4 w-4" />
-              Security
+              <span className="hidden sm:inline">Security</span>
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TabsTrigger value="notifications" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Bell className="h-4 w-4" />
-              Notifications
+              <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
             {canManageUsers && (
-              <TabsTrigger value="users" className="flex items-center gap-2">
+              <TabsTrigger value="users" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <UsersIcon className="h-4 w-4" />
-                User Management
+                <span className="hidden sm:inline">Users</span>
               </TabsTrigger>
             )}
             {isAdminOrOwner && (
               <>
-                <TabsTrigger value="activity" className="flex items-center gap-2">
+                <TabsTrigger value="activity" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <Activity className="h-4 w-4" />
-                  User Activity
+                  <span className="hidden sm:inline">Activity</span>
                 </TabsTrigger>
-                <TabsTrigger value="audit" className="flex items-center gap-2">
+                <TabsTrigger value="audit" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <FileText className="h-4 w-4" />
-                  Audit Logs
+                  <span className="hidden sm:inline">Audit Logs</span>
                 </TabsTrigger>
               </>
             )}
