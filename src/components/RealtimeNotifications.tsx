@@ -119,10 +119,26 @@ const RealtimeNotifications = () => {
       if (eventType.includes("role")) {
         const details = log.event_details;
         const newRole = details?.new_role || "updated";
+        const oldRole = details?.old_role;
+        const changedByEmail = details?.changed_by_email;
+        
+        // Get role description
+        const roleDescriptions: Record<string, string> = {
+          owner: "Full system access and user management",
+          admin: "Manage users, view all data, and access settings",
+          manager: "View reports and manage staff operations",
+          staff: "Standard access to daily operations",
+          viewer: "Read-only access to information"
+        };
+        
+        const description = changedByEmail 
+          ? `${changedByEmail} changed your role from ${oldRole} to ${newRole}. ${roleDescriptions[newRole] || ""}`
+          : `Your role has been changed to ${newRole}. ${roleDescriptions[newRole] || ""}`;
+        
         toast.success("Role Updated", {
-          description: `Your role has been changed to ${newRole}`,
+          description,
           icon: <UserCog className="h-5 w-5" />,
-          duration: 5000,
+          duration: 7000,
         });
         return;
       }
