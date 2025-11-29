@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { VapiCall } from "@/hooks/useVapiCalls";
 import { format } from "date-fns";
 import { Phone, Clock, DollarSign, MessageSquare } from "lucide-react";
+import CallTagManager from "./CallTagManager";
 
 interface CallDetailDialogProps {
   call: VapiCall;
@@ -201,6 +202,9 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
               </div>
             </div>
           )}
+
+          {/* Call Tag Manager */}
+          <CallTagManager callId={call.id} onTagSaved={onClose} />
         </div>
       </DialogContent>
     </Dialog>

@@ -35,10 +35,18 @@ export interface VapiAnalytics {
 interface UseVapiAnalyticsOptions {
   autoRefresh?: boolean;
   refreshInterval?: number;
+  calls?: VapiCall[]; // Optional: provide specific calls to analyze
 }
 
 export const useVapiAnalytics = (options: UseVapiAnalyticsOptions = {}) => {
-  const { calls, loading, error, refresh, lastUpdated } = useVapiCalls(options);
+  const { calls: allCalls, loading, error, refresh, lastUpdated } = useVapiCalls({
+    autoRefresh: options.autoRefresh,
+    refreshInterval: options.refreshInterval,
+  });
+  
+  // Use provided calls or all calls
+  const calls = options.calls || allCalls;
+  
   const [analytics, setAnalytics] = useState<VapiAnalytics>({
     totalCalls: 0,
     totalMinutes: 0,
@@ -124,5 +132,6 @@ export const useVapiAnalytics = (options: UseVapiAnalyticsOptions = {}) => {
     error,
     refresh,
     lastUpdated,
+    allCalls, // Return all calls for filtering
   };
 };

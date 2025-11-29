@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      call_tags: {
+        Row: {
+          call_id: string
+          category: string
+          created_at: string | null
+          id: string
+          notes: string | null
+          satisfaction_rating: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          call_id: string
+          category: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          satisfaction_rating?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          call_id?: string
+          category?: string
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          satisfaction_rating?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       file_upload_history: {
         Row: {
           completed_at: string | null
