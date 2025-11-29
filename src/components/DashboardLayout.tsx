@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Upload, History, LogOut, Settings, LucideIcon } from "lucide-react";
+import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon } from "lucide-react";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -43,10 +43,6 @@ const DashboardLayout = ({
     icon: Upload,
     label: "Upload",
     path: "/upload"
-  }, {
-    icon: History,
-    label: "Upload History",
-    path: "/upload-history"
   }, {
     icon: Settings,
     label: "Settings",
