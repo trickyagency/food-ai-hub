@@ -91,9 +91,11 @@ export const DashboardGrid = ({
       onLayoutChange={handleLayoutChange}
       onDragStart={() => setIsDragging(true)}
       onDragStop={() => setIsDragging(false)}
+      onResizeStart={() => setIsDragging(true)}
+      onResizeStop={() => setIsDragging(false)}
       draggableHandle=".cursor-grab"
       isDraggable={true}
-      isResizable={false}
+      isResizable={true}
       compactType="vertical"
       preventCollision={true}
       margin={[20, 20]}
