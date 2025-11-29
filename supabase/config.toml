@@ -3,5 +3,8 @@ project_id = "undppzthskqsikywqvwn"
 [functions.vapi-proxy]
 verify_jwt = true
 
+[functions.vapi-webhook]
+verify_jwt = false
+
 [functions.delete-user]
 verify_jwt = true

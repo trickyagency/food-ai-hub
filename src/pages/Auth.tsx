@@ -75,8 +75,8 @@ const Auth = () => {
             {isResetPassword 
               ? "Enter your email to receive a password reset link"
               : (isLogin 
-                  ? "Sign in to access your dashboard" 
-                  : "Sign up to get started with your AI agent")}
+                  ? "Sign in to VOICE AI Smartflow Automation" 
+                  : "Sign up to get started with VOICE AI Smartflow Automation")}
           </CardDescription>
         </CardHeader>
         <CardContent>

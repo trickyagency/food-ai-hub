@@ -266,6 +266,126 @@ export type Database = {
         }
         Relationships: []
       }
+      vapi_assistants_cache: {
+        Row: {
+          created_at: string | null
+          first_message: string | null
+          full_data: Json | null
+          id: string
+          model: Json | null
+          name: string | null
+          updated_at: string | null
+          user_id: string
+          voice: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          first_message?: string | null
+          full_data?: Json | null
+          id: string
+          model?: Json | null
+          name?: string | null
+          updated_at?: string | null
+          user_id: string
+          voice?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          first_message?: string | null
+          full_data?: Json | null
+          id?: string
+          model?: Json | null
+          name?: string | null
+          updated_at?: string | null
+          user_id?: string
+          voice?: Json | null
+        }
+        Relationships: []
+      }
+      vapi_call_events: {
+        Row: {
+          assistant_id: string | null
+          call_id: string
+          call_status: string | null
+          cost: number | null
+          created_at: string | null
+          customer_number: string | null
+          duration: number | null
+          event_id: string | null
+          event_type: string
+          id: string
+          payload: Json
+          phone_number_id: string | null
+          transcript_text: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assistant_id?: string | null
+          call_id: string
+          call_status?: string | null
+          cost?: number | null
+          created_at?: string | null
+          customer_number?: string | null
+          duration?: number | null
+          event_id?: string | null
+          event_type: string
+          id?: string
+          payload: Json
+          phone_number_id?: string | null
+          transcript_text?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assistant_id?: string | null
+          call_id?: string
+          call_status?: string | null
+          cost?: number | null
+          created_at?: string | null
+          customer_number?: string | null
+          duration?: number | null
+          event_id?: string | null
+          event_type?: string
+          id?: string
+          payload?: Json
+          phone_number_id?: string | null
+          transcript_text?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      vapi_phone_numbers_cache: {
+        Row: {
+          assistant_id: string | null
+          created_at: string | null
+          full_data: Json | null
+          id: string
+          name: string | null
+          number: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assistant_id?: string | null
+          created_at?: string | null
+          full_data?: Json | null
+          id: string
+          name?: string | null
+          number?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assistant_id?: string | null
+          created_at?: string | null
+          full_data?: Json | null
+          id?: string
+          name?: string | null
+          number?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       vectors_data: {
         Row: {
           content: string | null

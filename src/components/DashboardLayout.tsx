@@ -61,8 +61,8 @@ const DashboardLayout = ({
               <LayoutDashboard className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-base text-foreground tracking-tight">Voice AI Agent</h1>
-              <p className="text-xs text-muted-foreground font-medium">Call Analytics</p>
+              <h1 className="font-bold text-base text-foreground tracking-tight">VOICE AI</h1>
+              <p className="text-xs text-muted-foreground font-medium">Smartflow Automation</p>
             </div>
           </Link>
         </div>
