@@ -8,6 +8,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import RealtimeNotifications from "./components/RealtimeNotifications";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
+import UploadHistory from "./pages/UploadHistory";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -37,6 +38,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Upload />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/upload-history"
+              element={
+                <ProtectedRoute>
+                  <UploadHistory />
                 </ProtectedRoute>
               }
             />
