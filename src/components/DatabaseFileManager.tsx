@@ -126,12 +126,35 @@ const DatabaseFileManager = () => {
     const MAX_RETRIES = 3;
     const fileData = files[index];
     
+    // Get user data
+    const { data: { user } } = await supabase.auth.getUser();
+    let userRole = null;
+    
+    if (user) {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      userRole = roleData?.role;
+    }
+    
     const formData = new FormData();
     formData.append('file', fileData.file);
     formData.append('fileName', fileData.file.name);
     formData.append('fileSize', fileData.file.size.toString());
     formData.append('mimeType', fileData.file.type);
     formData.append('uploadedAt', new Date().toISOString());
+    
+    // Add user data
+    if (user) {
+      formData.append('userId', user.id);
+      formData.append('userEmail', user.email || '');
+      if (userRole) {
+        formData.append('userRole', userRole);
+      }
+    }
 
     try {
       const response = await fetch(WEBHOOK_URL, {
