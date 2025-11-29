@@ -215,6 +215,53 @@ const DatabaseFileManager = () => {
       }
     }
 
+    // Validate storage upload was successful before proceeding
+    if (!storageUploadSuccess) {
+      const errorMessage = 'File validation failed: Storage upload unsuccessful';
+      console.error(errorMessage);
+      
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+      toast.error(`Failed to validate ${fileData.file.name}: Storage upload unsuccessful`);
+      
+      if (user) {
+        await supabase.from('file_upload_history').update({
+          upload_status: 'failed',
+          error_message: errorMessage,
+          completed_at: new Date().toISOString()
+        }).eq('file_id', fileId).eq('user_id', user.id);
+      }
+      return;
+    }
+    
+    // Verify file exists in storage before sending webhook
+    if (user) {
+      const { data: verifyData, error: verifyError } = await supabase.storage
+        .from('database-files')
+        .list(user.id, {
+          search: `${fileId}-${fileData.file.name}`
+        });
+      
+      if (verifyError || !verifyData || verifyData.length === 0) {
+        const errorMessage = 'File validation failed: File not found in storage after upload';
+        console.error(errorMessage, verifyError);
+        
+        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+        toast.error(`Failed to validate ${fileData.file.name}: File not confirmed in storage`);
+        
+        // Rollback: Clean up database entry
+        await supabase.from('files').delete().eq('id', fileId);
+        await supabase.from('file_upload_history').update({
+          upload_status: 'failed',
+          error_message: errorMessage,
+          completed_at: new Date().toISOString()
+        }).eq('file_id', fileId).eq('user_id', user.id);
+        
+        return;
+      }
+    }
+    
+    toast.info(`${fileData.file.name} stored successfully, sending webhook notification...`);
+
     try {
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
@@ -238,6 +285,7 @@ const DatabaseFileManager = () => {
       if (user) {
         await supabase.from('webhook_responses').insert({
           user_id: user.id,
+          file_id: fileId,
           file_name: fileData.file.name,
           file_size: fileData.file.size,
           mime_type: fileData.file.type,
@@ -295,33 +343,60 @@ const DatabaseFileManager = () => {
         await new Promise(resolve => setTimeout(resolve, backoffDelay));
         return uploadFileWithRetry(index, retryCount + 1);
       } else {
-        // All retries exhausted
+        // All retries exhausted - ROLLBACK: Delete file from storage and database
         setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-        toast.error(`Failed to upload ${fileData.file.name} after ${MAX_RETRIES + 1} attempts: ${errorMessage}`);
+        toast.error(`Failed to upload ${fileData.file.name} after ${MAX_RETRIES + 1} attempts. Rolling back...`);
         
-        // Store final failure in database
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // Delete file from storage
+          const { error: deleteStorageError } = await supabase.storage
+            .from('database-files')
+            .remove([storagePath]);
+          
+          if (deleteStorageError) {
+            console.error('Rollback: Failed to delete file from storage:', deleteStorageError);
+            toast.warning('Failed to clean up storage, manual cleanup may be required');
+          } else {
+            console.log('Rollback: Successfully deleted file from storage:', storagePath);
+          }
+          
+          // Delete database record
+          const { error: deleteDbError } = await supabase
+            .from('files')
+            .delete()
+            .eq('id', fileId);
+          
+          if (deleteDbError) {
+            console.error('Rollback: Failed to delete database record:', deleteDbError);
+          } else {
+            console.log('Rollback: Successfully deleted database record:', fileId);
+          }
+          
           // Update upload history to failed
           await supabase.from('file_upload_history').update({
             upload_status: 'failed',
-            error_message: errorMessage,
+            error_message: `${errorMessage} (Rolled back: file deleted from storage and database)`,
             retry_count: retryCount,
             completed_at: new Date().toISOString()
           }).eq('file_id', fileId).eq('user_id', user.id);
           
+          // Log final failure
           await supabase.from('webhook_responses').insert({
             user_id: user.id,
+            file_id: fileId,
             file_name: fileData.file.name,
             file_size: fileData.file.size,
             mime_type: fileData.file.type,
             webhook_url: WEBHOOK_URL,
             status_code: null,
             response_body: null,
-            error_message: errorMessage,
+            error_message: `${errorMessage} (Rolled back)`,
             retry_count: retryCount,
             success: false
           });
+          
+          toast.success('Rollback completed: File removed from storage and database');
         }
       }
     }
