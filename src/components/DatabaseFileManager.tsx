@@ -79,7 +79,7 @@ const DatabaseFileManager = () => {
     }
   };
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[], rejectedFiles: any[]) => {
     if (rejectedFiles.length > 0) {
       rejectedFiles.forEach(({ file, errors }) => {
         errors.forEach((error: any) => {
@@ -89,20 +89,42 @@ const DatabaseFileManager = () => {
     }
 
     const validFiles: File[] = [];
-    acceptedFiles.forEach(file => {
+    
+    // Check for duplicates in already stored files
+    for (const file of acceptedFiles) {
       try {
         fileSchema.parse({
           name: file.name,
           size: file.size,
           type: file.type,
         });
+        
+        // Check if file already exists in database
+        const { data: existingFile } = await supabase
+          .from('files')
+          .select('file_name')
+          .eq('file_name', file.name)
+          .maybeSingle();
+        
+        if (existingFile) {
+          toast.error(`${file.name} already exists. Please rename or delete the existing file first.`);
+          continue;
+        }
+        
+        // Check if file is already in the pending upload queue
+        const isDuplicateInQueue = files.some(f => f.file.name === file.name);
+        if (isDuplicateInQueue) {
+          toast.error(`${file.name} is already in the upload queue.`);
+          continue;
+        }
+        
         validFiles.push(file);
       } catch (error) {
         if (error instanceof z.ZodError) {
           toast.error(`${file.name}: ${error.errors[0].message}`);
         }
       }
-    });
+    }
 
     const newFiles = validFiles.map(file => ({
       file,
@@ -110,7 +132,7 @@ const DatabaseFileManager = () => {
       progress: 0,
     }));
     setFiles(prev => [...prev, ...newFiles]);
-  }, []);
+  }, [files, storedFiles]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -125,10 +147,11 @@ const DatabaseFileManager = () => {
     maxSize: MAX_FILE_SIZE,
   });
 
-  const uploadFileWithRetry = async (index: number, retryCount = 0): Promise<void> => {
-    const MAX_RETRIES = 3;
+  const uploadFile = async (index: number): Promise<void> => {
     const fileData = files[index];
     const BUCKET_NAME = 'database-files';
+    
+    setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "uploading" as const } : f));
     
     // Generate unique file ID (reuse if retrying)
     const fileId = fileData.fileId || crypto.randomUUID();
@@ -152,60 +175,28 @@ const DatabaseFileManager = () => {
       userRole = roleData?.role;
     }
     
-    // Validate bucket exists before upload (only check on first attempt)
-    if (retryCount === 0) {
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      
-      if (bucketError) {
-        const errorMessage = `Failed to validate storage bucket: ${bucketError.message}`;
-        console.error(errorMessage);
-        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-        toast.error(`Bucket validation failed for ${fileData.file.name}`);
-        
-        if (user) {
-          await supabase.from('file_upload_history').insert({
-            file_id: fileId,
-            file_name: fileData.file.name,
-            file_size: fileData.file.size,
-            mime_type: fileData.file.type,
-            user_id: user.id,
-            upload_status: 'failed',
-            webhook_url: WEBHOOK_URL,
-            retry_count: 0,
-            error_message: errorMessage,
-            completed_at: new Date().toISOString()
-          });
-        }
-        return;
-      }
-      
-      const bucketExists = buckets?.some(bucket => bucket.name === BUCKET_NAME);
-      if (!bucketExists) {
-        const errorMessage = `Storage bucket '${BUCKET_NAME}' not found. Please contact support.`;
-        console.error(errorMessage);
-        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-        toast.error(`Bucket mismatch: ${BUCKET_NAME} not found`);
-        
-        if (user) {
-          await supabase.from('file_upload_history').insert({
-            file_id: fileId,
-            file_name: fileData.file.name,
-            file_size: fileData.file.size,
-            mime_type: fileData.file.type,
-            user_id: user.id,
-            upload_status: 'failed',
-            webhook_url: WEBHOOK_URL,
-            retry_count: 0,
-            error_message: errorMessage,
-            completed_at: new Date().toISOString()
-          });
-        }
-        return;
-      }
+    // Validate bucket exists before upload
+    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+    
+    if (bucketError) {
+      const errorMessage = `Failed to validate storage bucket: ${bucketError.message}`;
+      console.error(errorMessage);
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+      toast.error(`Bucket validation failed for ${fileData.file.name}`);
+      return;
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === BUCKET_NAME);
+    if (!bucketExists) {
+      const errorMessage = `Storage bucket '${BUCKET_NAME}' not found. Please contact support.`;
+      console.error(errorMessage);
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+      toast.error(`Bucket mismatch: ${BUCKET_NAME} not found`);
+      return;
     }
     
     // Create upload history record
-    if (user && retryCount === 0) {
+    if (user) {
       await supabase.from('file_upload_history').insert({
         file_id: fileId,
         file_name: fileData.file.name,
@@ -335,7 +326,6 @@ const DatabaseFileManager = () => {
       }
 
       // Store webhook response in database
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from('webhook_responses').insert({
           user_id: user.id,
@@ -347,7 +337,7 @@ const DatabaseFileManager = () => {
           status_code: response.status,
           response_body: responseData,
           error_message: response.ok ? null : responseText,
-          retry_count: retryCount,
+          retry_count: 0,
           success: response.ok
         });
       }
@@ -356,7 +346,6 @@ const DatabaseFileManager = () => {
         console.log('n8n webhook response:', responseData || responseText);
         
         // Update upload history to success
-        const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase.from('file_upload_history').update({
             upload_status: 'success',
@@ -378,87 +367,63 @@ const DatabaseFileManager = () => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Network error';
-      console.error(`Upload error (attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, error);
-
-      if (retryCount < MAX_RETRIES) {
-        // Exponential backoff: 2^retry * 1000ms (1s, 2s, 4s)
-        const backoffDelay = Math.pow(2, retryCount) * 1000;
-        toast.info(`Retrying upload for ${fileData.file.name} in ${backoffDelay / 1000}s... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      console.error('Upload error:', error);
+      
+      // ROLLBACK: Delete file from storage and database
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+      toast.error(`Failed to upload ${fileData.file.name}. Rolling back...`);
+      
+      if (user) {
+        // Delete file from storage
+        const { error: deleteStorageError } = await supabase.storage
+          .from(BUCKET_NAME)
+          .remove([storagePath]);
         
-        // Update upload history with retry attempt
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from('file_upload_history').update({
-            upload_status: 'uploading',
-            retry_count: retryCount + 1
-          }).eq('file_id', fileId).eq('user_id', user.id);
+        if (deleteStorageError) {
+          console.error('Rollback: Failed to delete file from storage:', deleteStorageError);
+          toast.warning('Failed to clean up storage, manual cleanup may be required');
+        } else {
+          console.log('Rollback: Successfully deleted file from storage:', storagePath);
         }
         
-        await new Promise(resolve => setTimeout(resolve, backoffDelay));
-        return uploadFileWithRetry(index, retryCount + 1);
-      } else {
-        // All retries exhausted - ROLLBACK: Delete file from storage and database
-        setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-        toast.error(`Failed to upload ${fileData.file.name} after ${MAX_RETRIES + 1} attempts. Rolling back...`);
+        // Delete database record
+        const { error: deleteDbError } = await supabase
+          .from('files')
+          .delete()
+          .eq('id', fileId);
         
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // Delete file from storage
-          const { error: deleteStorageError } = await supabase.storage
-            .from(BUCKET_NAME)
-            .remove([storagePath]);
-          
-          if (deleteStorageError) {
-            console.error('Rollback: Failed to delete file from storage:', deleteStorageError);
-            toast.warning('Failed to clean up storage, manual cleanup may be required');
-          } else {
-            console.log('Rollback: Successfully deleted file from storage:', storagePath);
-          }
-          
-          // Delete database record
-          const { error: deleteDbError } = await supabase
-            .from('files')
-            .delete()
-            .eq('id', fileId);
-          
-          if (deleteDbError) {
-            console.error('Rollback: Failed to delete database record:', deleteDbError);
-          } else {
-            console.log('Rollback: Successfully deleted database record:', fileId);
-          }
-          
-          // Update upload history to failed
-          await supabase.from('file_upload_history').update({
-            upload_status: 'failed',
-            error_message: `${errorMessage} (Rolled back: file deleted from storage and database)`,
-            retry_count: retryCount,
-            completed_at: new Date().toISOString()
-          }).eq('file_id', fileId).eq('user_id', user.id);
-          
-          // Log final failure
-          await supabase.from('webhook_responses').insert({
-            user_id: user.id,
-            file_id: fileId,
-            file_name: fileData.file.name,
-            file_size: fileData.file.size,
-            mime_type: fileData.file.type,
-            webhook_url: WEBHOOK_URL,
-            status_code: null,
-            response_body: null,
-            error_message: `${errorMessage} (Rolled back)`,
-            retry_count: retryCount,
-            success: false
-          });
-          
-          toast.success('Rollback completed: File removed from storage and database');
+        if (deleteDbError) {
+          console.error('Rollback: Failed to delete database record:', deleteDbError);
+        } else {
+          console.log('Rollback: Successfully deleted database record:', fileId);
         }
+        
+        // Update upload history to failed
+        await supabase.from('file_upload_history').update({
+          upload_status: 'failed',
+          error_message: `${errorMessage} (Rolled back: file deleted from storage and database)`,
+          retry_count: 0,
+          completed_at: new Date().toISOString()
+        }).eq('file_id', fileId).eq('user_id', user.id);
+        
+        // Log final failure
+        await supabase.from('webhook_responses').insert({
+          user_id: user.id,
+          file_id: fileId,
+          file_name: fileData.file.name,
+          file_size: fileData.file.size,
+          mime_type: fileData.file.type,
+          webhook_url: WEBHOOK_URL,
+          status_code: null,
+          response_body: null,
+          error_message: `${errorMessage} (Rolled back)`,
+          retry_count: 0,
+          success: false
+        });
+        
+        toast.success('Rollback completed: File removed from storage and database');
       }
     }
-  };
-
-  const uploadFile = async (index: number) => {
-    setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "uploading" as const } : f));
-    await uploadFileWithRetry(index, 0);
   };
 
   const removeFile = (index: number) => {
