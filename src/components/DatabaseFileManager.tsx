@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { auditLog } from "@/lib/auditLog";
 
-const WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook-test/databaseupload";
+const WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook/2e1e8c7c-8d78-4203-bafd-4a1482234078";
 const DELETE_WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook/faf85808-43a9-4b09-86f2-b316b09a473c";
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
