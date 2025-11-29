@@ -550,7 +550,28 @@ const DatabaseFileManager = () => {
     if (!confirm(`Are you sure you want to delete ${file.file_name}?`)) return;
 
     try {
-      // Get user data
+      // 1. Delete from Supabase Storage
+      const { error: storageError } = await supabase.storage
+        .from("database-files")
+        .remove([file.storage_path]);
+
+      if (storageError) {
+        console.error("Storage deletion error:", storageError);
+        throw new Error(`Failed to delete file from storage: ${storageError.message}`);
+      }
+
+      // 2. Delete from Supabase database
+      const { error: dbError } = await supabase
+        .from("files")
+        .delete()
+        .eq("id", file.id);
+
+      if (dbError) {
+        console.error("Database deletion error:", dbError);
+        throw new Error(`Failed to delete file from database: ${dbError.message}`);
+      }
+
+      // 3. Get user data for webhook notification
       const { data: { user } } = await supabase.auth.getUser();
       let userRole = null;
       
@@ -564,39 +585,45 @@ const DatabaseFileManager = () => {
         userRole = roleData?.role;
       }
 
-      // Send delete request to n8n webhook with complete file metadata
-      const response = await fetch(DELETE_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileId: file.id,
-          fileName: file.file_name,
-          storagePath: file.storage_path,
-          bucketName: 'database-files', // Explicit bucket name for n8n
-          fileSize: file.size,
-          mimeType: file.mime_type,
-          createdAt: file.created_at,
-          updatedAt: file.updated_at,
-          userId: user?.id,
-          userEmail: user?.email || '',
-          userRole: userRole,
-        }),
-      });
+      // 4. Send delete notification to n8n webhook
+      try {
+        const response = await fetch(DELETE_WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileId: file.id,
+            fileName: file.file_name,
+            storagePath: file.storage_path,
+            bucketName: 'database-files',
+            fileSize: file.size,
+            mimeType: file.mime_type,
+            createdAt: file.created_at,
+            updatedAt: file.updated_at,
+            userId: user?.id,
+            userEmail: user?.email || '',
+            userRole: userRole,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Delete failed: ${response.status} - ${errorText || 'Unknown error'}`);
+        if (!response.ok) {
+          console.warn(`Webhook notification failed: ${response.status}`);
+        }
+      } catch (webhookError) {
+        // Don't fail the entire deletion if webhook fails
+        console.warn("Webhook notification failed:", webhookError);
       }
 
+      // 5. Create audit log
       await auditLog.fileDeleted(file.file_name || "Unnamed file", file.id);
 
+      // 6. Update local state
       setStoredFiles(storedFiles.filter((f) => f.id !== file.id));
       toast.success(`Deleted ${file.file_name}`);
     } catch (error) {
       console.error("Error deleting file:", error);
-      toast.error("Failed to delete file");
+      toast.error(error instanceof Error ? error.message : "Failed to delete file");
     }
   };
 
