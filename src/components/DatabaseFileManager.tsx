@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2, Download, Edit2, Eye } from "lucide-react";
+import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2, Download, Edit2, Eye, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { z } from "zod";
 import { auditLog } from "@/lib/auditLog";
@@ -33,6 +34,12 @@ interface UploadedFile {
   status: "pending" | "uploading" | "success" | "error";
   progress: number;
   fileId?: string;
+  errorDetails?: {
+    message: string;
+    timestamp: string;
+    statusCode?: number;
+    responseBody?: any;
+  };
 }
 
 interface FileRecord {
@@ -50,6 +57,7 @@ const DatabaseFileManager = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [storedFiles, setStoredFiles] = useState<FileRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [webhookStatus, setWebhookStatus] = useState<"unknown" | "testing" | "connected" | "failed">("unknown");
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; file: FileRecord | null }>({ open: false, file: null });
   const [newFileName, setNewFileName] = useState("");
   const [previewDialog, setPreviewDialog] = useState<{ open: boolean; file: FileRecord | null; content: string }>({ 
@@ -76,6 +84,42 @@ const DatabaseFileManager = () => {
       toast.error("Failed to load files");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testWebhookConnection = async () => {
+    setWebhookStatus("testing");
+    toast.info("Testing webhook connection...");
+    
+    try {
+      const testPayload = {
+        test: true,
+        timestamp: new Date().toISOString(),
+        message: "Connection test from dashboard"
+      };
+
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testPayload),
+      });
+
+      if (response.ok) {
+        setWebhookStatus("connected");
+        toast.success("Webhook connection successful!");
+        console.log("Webhook test response:", await response.text());
+      } else {
+        setWebhookStatus("failed");
+        toast.error(`Webhook test failed: ${response.status} ${response.statusText}`);
+        console.error("Webhook test failed:", response.status, await response.text());
+      }
+    } catch (error) {
+      setWebhookStatus("failed");
+      const errorMessage = error instanceof Error ? error.message : 'Network error';
+      toast.error(`Webhook connection failed: ${errorMessage}`);
+      console.error("Webhook test error:", error);
     }
   };
 
@@ -193,18 +237,35 @@ const DatabaseFileManager = () => {
     const storagePath = `${user?.id}/${fileId}-${fileData.file.name}`;
     let storageUploadSuccess = false;
     
+    // Update progress: Starting upload
+    setFiles(prev => prev.map((f, i) => i === index ? { ...f, progress: 10 } : f));
+    
     if (user) {
       const { error: storageError } = await supabase.storage
         .from(BUCKET_NAME)
         .upload(storagePath, fileData.file);
       
       if (storageError) {
+        const errorDetails = {
+          message: `Storage upload failed: ${storageError.message}`,
+          timestamp: new Date().toISOString(),
+          statusCode: 500,
+          responseBody: storageError
+        };
         console.error('Storage upload error:', storageError);
+        setFiles(prev => prev.map((f, i) => i === index ? { 
+          ...f, 
+          status: "error" as const, 
+          errorDetails 
+        } : f));
         toast.error('Failed to upload file to storage');
-        throw new Error(`Storage upload failed: ${storageError.message}`);
+        throw new Error(errorDetails.message);
       }
       
       storageUploadSuccess = true;
+      
+      // Update progress: Storage upload complete
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, progress: 40 } : f));
       
       // Insert into files table
       const { error: dbError } = await supabase.from('files').insert({
@@ -219,6 +280,9 @@ const DatabaseFileManager = () => {
       if (dbError) {
         console.error('Database insert error:', dbError);
       }
+      
+      // Update progress: Database record created
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, progress: 50 } : f));
     }
     
     const formData = new FormData();
@@ -286,12 +350,18 @@ const DatabaseFileManager = () => {
     }
     
     toast.info(`${fileData.file.name} stored successfully, sending webhook notification...`);
+    
+    // Update progress: Sending webhook
+    setFiles(prev => prev.map((f, i) => i === index ? { ...f, progress: 70 } : f));
 
     try {
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         body: formData,
       });
+      
+      // Update progress: Webhook sent
+      setFiles(prev => prev.map((f, i) => i === index ? { ...f, progress: 85 } : f));
 
       let responseData = null;
       let responseText = '';
@@ -304,6 +374,15 @@ const DatabaseFileManager = () => {
       } catch (e) {
         // Response wasn't JSON, use text
       }
+      
+      // Detailed logging for webhook response
+      console.log('=== Webhook Response Details ===');
+      console.log('Status:', response.status, response.statusText);
+      console.log('URL:', WEBHOOK_URL);
+      console.log('File:', fileData.file.name);
+      console.log('File ID:', fileId);
+      console.log('Response Body:', responseData || responseText);
+      console.log('===============================');
 
       // Store webhook response in database
       if (user) {
@@ -323,8 +402,6 @@ const DatabaseFileManager = () => {
       }
 
       if (response.ok) {
-        console.log('n8n webhook response:', responseData || responseText);
-        
         // Update upload history to success
         if (user) {
           await supabase.from('file_upload_history').update({
@@ -343,14 +420,41 @@ const DatabaseFileManager = () => {
           setFiles(prev => prev.filter((_, i) => i !== index));
         }, 1000);
       } else {
-        throw new Error(`Upload failed: ${response.status} - ${responseText || 'Unknown error'}`);
+        const errorDetails = {
+          message: `Webhook failed: ${response.status} ${response.statusText}`,
+          timestamp: new Date().toISOString(),
+          statusCode: response.status,
+          responseBody: responseData || responseText
+        };
+        
+        console.error('=== Webhook Error Details ===');
+        console.error('Status:', response.status, response.statusText);
+        console.error('Response:', responseData || responseText);
+        console.error('=============================');
+        
+        throw new Error(errorDetails.message);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Network error';
-      console.error('Upload error:', error);
+      const errorDetails = {
+        message: errorMessage,
+        timestamp: new Date().toISOString(),
+        statusCode: undefined,
+        responseBody: undefined
+      };
+      
+      console.error('=== Upload Error Details ===');
+      console.error('Error:', error);
+      console.error('File:', fileData.file.name);
+      console.error('File ID:', fileId);
+      console.error('============================');
       
       // ROLLBACK: Delete file from storage and database
-      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
+      setFiles(prev => prev.map((f, i) => i === index ? { 
+        ...f, 
+        status: "error" as const, 
+        errorDetails 
+      } : f));
       toast.error(`Failed to upload ${fileData.file.name}. Rolling back...`);
       
       if (user) {
@@ -571,8 +675,41 @@ const DatabaseFileManager = () => {
       {/* Upload Section */}
       <Card className="bg-gradient-card border-border/50 shadow-elegant">
         <CardHeader>
-          <CardTitle className="text-foreground">Upload Database Files</CardTitle>
-          <CardDescription>Upload your food business data files to sync with the AI agent (Max 200MB)</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-foreground">Upload Database Files</CardTitle>
+              <CardDescription>Upload your food business data files to sync with the AI agent (Max 200MB)</CardDescription>
+            </div>
+            <Button
+              onClick={testWebhookConnection}
+              disabled={webhookStatus === "testing"}
+              variant={webhookStatus === "connected" ? "outline" : "default"}
+              size="sm"
+              className="gap-2"
+            >
+              {webhookStatus === "testing" ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Testing...
+                </>
+              ) : webhookStatus === "connected" ? (
+                <>
+                  <Wifi className="w-4 h-4" />
+                  Connected
+                </>
+              ) : webhookStatus === "failed" ? (
+                <>
+                  <WifiOff className="w-4 h-4" />
+                  Test Connection
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-4 h-4" />
+                  Test Connection
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
@@ -608,36 +745,57 @@ const DatabaseFileManager = () => {
                 {files.map((fileData, index) => (
                   <div
                     key={index}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border"
+                    className="p-3 rounded-lg bg-card border border-border space-y-2"
                   >
-                    <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{fileData.file.name}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-muted-foreground">{formatFileSize(fileData.file.size)}</p>
-                        {fileData.fileId && (
-                          <p className="text-xs text-primary font-mono">ID: {fileData.fileId.slice(0, 8)}...</p>
-                        )}
+                    <div className="flex items-center gap-3">
+                      <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{fileData.file.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-muted-foreground">{formatFileSize(fileData.file.size)}</p>
+                          {fileData.fileId && (
+                            <p className="text-xs text-primary font-mono">ID: {fileData.fileId.slice(0, 8)}...</p>
+                          )}
+                        </div>
                       </div>
+                      {fileData.status === "success" && (
+                        <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                      )}
+                      {fileData.status === "error" && (
+                        <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                      )}
+                      {fileData.status === "uploading" && (
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      )}
+                      {fileData.status === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFile(index)}
+                          className="flex-shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
-                    {fileData.status === "success" && (
-                      <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
+                    
+                    {/* Progress Bar */}
+                    {(fileData.status === "uploading" || fileData.status === "success") && (
+                      <div className="space-y-1">
+                        <Progress value={fileData.progress} className="h-2" />
+                        <p className="text-xs text-muted-foreground">{fileData.progress}% complete</p>
+                      </div>
                     )}
-                    {fileData.status === "error" && (
-                      <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
-                    )}
-                    {fileData.status === "uploading" && (
-                      <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                    )}
-                    {fileData.status === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeFile(index)}
-                        className="flex-shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                    
+                    {/* Error Details */}
+                    {fileData.status === "error" && fileData.errorDetails && (
+                      <div className="text-xs bg-destructive/10 border border-destructive/20 rounded p-2 space-y-1">
+                        <p className="text-destructive font-medium">{fileData.errorDetails.message}</p>
+                        {fileData.errorDetails.statusCode && (
+                          <p className="text-muted-foreground">Status: {fileData.errorDetails.statusCode}</p>
+                        )}
+                        <p className="text-muted-foreground">Time: {new Date(fileData.errorDetails.timestamp).toLocaleTimeString()}</p>
+                      </div>
                     )}
                   </div>
                 ))}
