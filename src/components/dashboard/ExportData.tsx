@@ -157,14 +157,14 @@ export const ExportData = ({ metrics }: ExportDataProps) => {
           {isExporting ? "Exporting..." : "Export"}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={exportToPDF} className="gap-2 cursor-pointer">
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuItem onClick={exportToPDF} className="gap-2 cursor-pointer text-sm">
           <FileText className="w-4 h-4" />
-          Export as PDF
+          PDF Report
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={exportToCSV} className="gap-2 cursor-pointer">
+        <DropdownMenuItem onClick={exportToCSV} className="gap-2 cursor-pointer text-sm">
           <FileSpreadsheet className="w-4 h-4" />
-          Export as CSV
+          CSV Data
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

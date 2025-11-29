@@ -43,30 +43,30 @@ export const DashboardCustomizer = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Customize Dashboard</DialogTitle>
-          <DialogDescription>
-            Choose which widgets to display and arrange them by dragging
+          <DialogTitle className="text-lg font-bold">Customize Dashboard</DialogTitle>
+          <DialogDescription className="text-sm text-slate-600 dark:text-slate-400">
+            Choose which widgets to display on your dashboard
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Widget Toggles */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Visible Widgets</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Visible Widgets</h3>
             <div className="space-y-3">
               {AVAILABLE_WIDGETS.map((widget) => (
                 <div
                   key={widget.id}
-                  className="flex items-start justify-between gap-4 p-3 rounded-lg border border-border/60 hover:bg-muted/50 transition-colors"
+                  className="flex items-start justify-between gap-4 p-3 rounded-md border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                 >
                   <div className="flex-1">
                     <Label
                       htmlFor={widget.id}
-                      className="text-sm font-medium cursor-pointer"
+                      className="text-sm font-medium cursor-pointer text-slate-900 dark:text-slate-100"
                     >
                       {widget.title}
                     </Label>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                       {widget.description}
                     </p>
                   </div>
@@ -80,11 +80,11 @@ export const DashboardCustomizer = ({
             </div>
           </div>
 
-          <Separator />
+          <Separator className="bg-slate-200 dark:bg-slate-800" />
 
           {/* Reset Button */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Layout</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Layout</h3>
             <Button
               variant="outline"
               size="sm"
@@ -92,10 +92,10 @@ export const DashboardCustomizer = ({
               className="w-full gap-2"
             >
               <RotateCcw className="w-4 h-4" />
-              Reset to Default Layout
+              Reset to Default
             </Button>
-            <p className="text-xs text-muted-foreground">
-              This will restore the original widget positions and sizes
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Restore original widget positions and sizes
             </p>
           </div>
         </div>
