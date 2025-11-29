@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.delete-user]
 verify_jwt = true
+
+[functions.generate-call-summary]
+verify_jwt = true
