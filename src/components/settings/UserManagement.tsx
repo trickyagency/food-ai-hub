@@ -135,6 +135,13 @@ const UserManagement = () => {
         return;
       }
 
+      // Get current user's profile email for audit log
+      const { data: currentUserProfile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", user.id)
+        .single();
+
       // Get current role before updating
       const currentUser = users.find(u => u.id === userId);
       const oldRole = currentUser?.role || null;
@@ -164,8 +171,14 @@ const UserManagement = () => {
 
       if (historyError) console.error("Failed to log role history:", historyError);
 
-      // Log the role change to audit logs
-      await auditLog.roleChange(userId, oldRole || "unknown", newRole);
+      // Log the role change to audit logs with changed_by information
+      await auditLog.roleChange(
+        userId, 
+        oldRole || "unknown", 
+        newRole,
+        user.id,
+        currentUserProfile?.email || undefined
+      );
 
       toast.success("User role updated successfully");
       fetchUsers();

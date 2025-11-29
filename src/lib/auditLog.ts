@@ -53,11 +53,17 @@ export const auditLog = {
       event_details: { changed_at: new Date().toISOString() },
     }),
 
-  roleChange: (userId: string, oldRole: string, newRole: string) =>
+  roleChange: (userId: string, oldRole: string, newRole: string, changedBy?: string, changedByEmail?: string) =>
     createAuditLog({
       event_type: "role_change",
       user_id: userId,
-      event_details: { old_role: oldRole, new_role: newRole },
+      event_details: { 
+        old_role: oldRole, 
+        new_role: newRole,
+        changed_by: changedBy,
+        changed_by_email: changedByEmail,
+        timestamp: new Date().toISOString()
+      },
     }),
 
   twoFactorEnabled: (userId: string) =>
