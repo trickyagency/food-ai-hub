@@ -63,15 +63,15 @@ const Index = () => {
   return (
     <DashboardLayout>
       <PageTransition>
-        <div className="p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
+        <div className="p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
           {/* Header */}
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-2">
-                <h1 className="text-4xl font-bold text-foreground tracking-tight">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
                   VOICE AI Dashboard
                 </h1>
-                <p className="text-base text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground">
                   Real-time AI voice assistant analytics and call management
                 </p>
               </div>
@@ -117,28 +117,34 @@ const Index = () => {
 
                   {/* Tabs for different views */}
                   <Tabs defaultValue="overview" className="space-y-6">
-                    <TabsList className="bg-muted/50 p-1">
-                      <TabsTrigger value="overview" className="flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4" />
-                        Overview
-                      </TabsTrigger>
-                      <TabsTrigger value="analytics" className="flex items-center gap-2">
-                        <Activity className="w-4 h-4" />
-                        Detailed Analytics
-                      </TabsTrigger>
-                      {canSeeCallLogs && (
-                        <TabsTrigger value="calls" className="flex items-center gap-2">
-                          <Phone className="w-4 h-4" />
-                          Call Logs
+                    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                      <TabsList className="bg-muted/50 p-1 inline-flex min-w-full sm:min-w-0">
+                        <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                          <BarChart3 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Overview</span>
+                          <span className="sm:hidden">Home</span>
                         </TabsTrigger>
-                      )}
-                      <TabsTrigger value="account" className="flex items-center gap-2">
-                        <Settings className="w-4 h-4" />
-                        Account & Resources
-                      </TabsTrigger>
-                    </TabsList>
+                        <TabsTrigger value="analytics" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                          <Activity className="w-4 h-4" />
+                          <span className="hidden sm:inline">Detailed Analytics</span>
+                          <span className="sm:hidden">Analytics</span>
+                        </TabsTrigger>
+                        {canSeeCallLogs && (
+                          <TabsTrigger value="calls" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                            <Phone className="w-4 h-4" />
+                            <span className="hidden sm:inline">Call Logs</span>
+                            <span className="sm:hidden">Calls</span>
+                          </TabsTrigger>
+                        )}
+                        <TabsTrigger value="account" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                          <Settings className="w-4 h-4" />
+                          <span className="hidden sm:inline">Account & Resources</span>
+                          <span className="sm:hidden">Account</span>
+                        </TabsTrigger>
+                      </TabsList>
+                    </div>
 
-                    <TabsContent value="overview" className="space-y-8">
+                    <TabsContent value="overview" className="space-y-6 sm:space-y-8">
                       {/* Metrics Grid */}
                       <VapiMetricsGrid analytics={analytics} loading={false} />
 
@@ -152,22 +158,22 @@ const Index = () => {
                       <PerformanceTrendsChart />
                     </TabsContent>
 
-                    <TabsContent value="analytics" className="space-y-8">
+                    <TabsContent value="analytics" className="space-y-6 sm:space-y-8">
                       <DetailedAnalytics calls={filteredCalls} />
                     </TabsContent>
 
                     {canSeeCallLogs && (
-                      <TabsContent value="calls" className="space-y-8">
+                      <TabsContent value="calls" className="space-y-6 sm:space-y-8">
                         <VapiCallLogsTable calls={filteredCalls} loading={false} />
                       </TabsContent>
                     )}
 
-                    <TabsContent value="account" className="space-y-8">
+                    <TabsContent value="account" className="space-y-6 sm:space-y-8">
                       {/* Account Overview */}
                       <AccountOverviewWidget analytics={allAnalytics} />
                       
                       {/* Resources Grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         <AssistantsWidget />
                         <PhoneNumbersWidget />
                       </div>

@@ -51,17 +51,17 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Call Details</DialogTitle>
+          <DialogTitle className="text-xl sm:text-2xl">Call Details</DialogTitle>
           <DialogDescription>
             View complete information about this call
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Call Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">Call Type</p>
               <Badge variant="outline" className="w-fit">
@@ -83,21 +83,21 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
 
           {/* Contact Info */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Phone className="w-5 h-5 text-primary" />
+            <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               Contact Information
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Phone Number</p>
-                <p className="text-base font-mono">
+                <p className="text-sm sm:text-base font-mono break-all">
                   {call.customer?.number || call.phoneNumber?.number || "N/A"}
                 </p>
               </div>
               {call.customer?.name && (
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Customer Name</p>
-                  <p className="text-base">{call.customer.name}</p>
+                  <p className="text-sm sm:text-base">{call.customer.name}</p>
                 </div>
               )}
             </div>
@@ -107,14 +107,14 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
 
           {/* Call Metrics */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
+            <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               Call Metrics
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Duration</p>
-                <p className="text-base font-semibold">
+                <p className="text-sm sm:text-base font-semibold">
                   {call.duration
                     ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s`
                     : "N/A"}
@@ -122,14 +122,14 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Time</p>
-                <p className="text-base">
+                <p className="text-sm sm:text-base break-all">
                   {format(new Date(call.createdAt), "MMM d, yyyy 'at' h:mm a")}
                 </p>
               </div>
               {call.endedReason && (
-                <div className="space-y-1 col-span-2">
+                <div className="space-y-1 col-span-full">
                   <p className="text-sm font-medium text-muted-foreground">Ended Reason</p>
-                  <p className="text-base">{call.endedReason}</p>
+                  <p className="text-sm sm:text-base">{call.endedReason}</p>
                 </div>
               )}
             </div>
@@ -141,44 +141,44 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
           {call.costBreakdown && (
             <>
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-primary" />
+                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                   Cost Breakdown
                 </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">STT</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-base sm:text-lg font-bold">
                       ${(call.costBreakdown.stt || 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">LLM</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-base sm:text-lg font-bold">
                       ${(call.costBreakdown.llm || 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">TTS</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-base sm:text-lg font-bold">
                       ${(call.costBreakdown.tts || 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Vapi</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-base sm:text-lg font-bold">
                       ${(call.costBreakdown.vapi || 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Transport</p>
-                    <p className="text-lg font-bold">
+                    <p className="text-base sm:text-lg font-bold">
                       ${(call.costBreakdown.transport || 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-primary/10 rounded-lg border-2 border-primary/20">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Total</p>
-                    <p className="text-lg font-bold text-primary">
+                    <p className="text-base sm:text-lg font-bold text-primary">
                       ${(call.cost || 0).toFixed(4)}
                     </p>
                   </div>
