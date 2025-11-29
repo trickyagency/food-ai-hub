@@ -23,15 +23,18 @@ serve(async (req) => {
       );
     }
 
-    // Parse the request body to extract our routing parameter
+    // Parse the request body to extract our routing parameters
     const requestBody = await req.json();
     const endpoint = requestBody.endpoint || "/call";
     const method = requestBody.method || "GET";
     
-    // Remove the endpoint and method fields from the body before forwarding to Vapi
-    const { endpoint: _, method: __, ...vapiBody } = requestBody;
-
     console.log(`Proxying ${method} request to Vapi: ${endpoint}`);
+    console.log(`Request body fields:`, Object.keys(requestBody));
+    
+    // Remove our internal routing parameters before forwarding to Vapi
+    const { endpoint: _endpoint, method: _method, ...vapiPayload } = requestBody;
+    
+    console.log(`Vapi payload fields:`, Object.keys(vapiPayload));
 
     // Prepare request to Vapi API
     const vapiUrl = `${VAPI_BASE_URL}${endpoint}`;
@@ -40,14 +43,21 @@ serve(async (req) => {
       "Content-Type": "application/json",
     };
 
-    let vapiRequestInit: RequestInit = {
+    const vapiRequestInit: RequestInit = {
       method: method,
       headers: vapiHeaders,
     };
 
-    // Add body for POST, PUT, PATCH requests
-    if (["POST", "PUT", "PATCH"].includes(method) && Object.keys(vapiBody).length > 0) {
-      vapiRequestInit.body = JSON.stringify(vapiBody);
+    // Add body only for POST, PUT, PATCH requests
+    if (["POST", "PUT", "PATCH"].includes(method)) {
+      if (Object.keys(vapiPayload).length > 0) {
+        vapiRequestInit.body = JSON.stringify(vapiPayload);
+        console.log(`Sending body to Vapi:`, JSON.stringify(vapiPayload));
+      } else {
+        console.log(`No body to send for ${method} request`);
+      }
+    } else {
+      console.log(`GET request - no body sent`);
     }
 
     console.log(`Making request to: ${vapiUrl}`);
