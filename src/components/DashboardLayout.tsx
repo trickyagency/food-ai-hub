@@ -3,10 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon } from "lucide-react";
+import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, X } from "lucide-react";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -15,100 +16,124 @@ interface NavItem {
   label: string;
   path: string;
 }
-const DashboardLayout = ({
-  children
-}: DashboardLayoutProps) => {
-  const {
-    user,
-    logout
-  } = useAuth();
+const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+  const { user, logout } = useAuth();
   const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   useEffect(() => {
     const fetchUserRole = async () => {
       if (user) {
-        const {
-          data
-        } = await supabase.from("user_roles").select("role").eq("user_id", user.id).single();
+        const { data } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
         setUserRole(data?.role || null);
       }
     };
     fetchUserRole();
   }, [user]);
-  const navItems: NavItem[] = [{
-    icon: LayoutDashboard,
-    label: "Dashboard",
-    path: "/"
-  }, {
-    icon: Upload,
-    label: "Database Files",
-    path: "/upload"
-  }, {
-    icon: Settings,
-    label: "Settings",
-    path: "/settings"
-  }];
+
+  const navItems: NavItem[] = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+    { icon: Upload, label: "Database Files", path: "/upload" },
+    { icon: Settings, label: "Settings", path: "/settings" },
+  ];
+
   const handleLogout = async () => {
     await logout();
     toast.success("Logged out successfully");
   };
-  return <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-border flex flex-col bg-card shadow-sm">
-        <div className="p-6 border-b border-border">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
-              <LayoutDashboard className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-bold text-base text-foreground tracking-tight">VOICE AI</h1>
-              <p className="text-xs text-muted-foreground font-medium">Smartflow Automation</p>
-            </div>
-          </Link>
-        </div>
 
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(item => {
-          const Icon = item.icon;
-          return <NavLink 
-                key={item.path} 
-                to={item.path} 
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-foreground hover:bg-muted transition-all duration-200" 
-                activeClassName="bg-primary text-primary-foreground font-semibold shadow-md"
-              >
-                <Icon className="w-5 h-5" />
-                <span>{item.label}</span>
-              </NavLink>;
-        })}
-        </nav>
-
-        <div className="p-4 border-t border-border space-y-3">
-          <ThemeToggle />
-          
-          <div className="px-4 py-3 bg-muted/50 rounded-lg">
-            <p className="text-sm font-semibold text-foreground truncate">{user?.email}</p>
-            {userRole && (
-              <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20">
-                {userRole}
-              </span>
-            )}
+  const SidebarContent = () => (
+    <>
+      <div className="p-4 sm:p-6 border-b border-border">
+        <Link to="/" className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
+            <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleLogout} 
-            className="w-full"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div>
+            <h1 className="font-bold text-sm sm:text-base text-foreground tracking-tight">VOICE AI</h1>
+            <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Smartflow Automation</p>
+          </div>
+        </Link>
+      </div>
+
+      <nav className="flex-1 p-3 sm:p-4 space-y-1">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm text-foreground hover:bg-muted transition-all duration-200"
+              activeClassName="bg-primary text-primary-foreground font-semibold shadow-md"
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span>{item.label}</span>
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      <div className="p-3 sm:p-4 border-t border-border space-y-3">
+        <ThemeToggle />
+
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-muted/50 rounded-lg">
+          <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{user?.email}</p>
+          {userRole && (
+            <span className="inline-flex items-center gap-1.5 mt-2 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20">
+              {userRole}
+            </span>
+          )}
         </div>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="w-full text-sm">
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
+    </>
+  );
+  return (
+    <div className="flex min-h-screen bg-background">
+      {/* Mobile Header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-4">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-md">
+            <LayoutDashboard className="w-4 h-4 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="font-bold text-sm text-foreground">VOICE AI</h1>
+          </div>
+        </Link>
+
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="lg:hidden">
+              <Menu className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-64 p-0">
+            <div className="flex flex-col h-full">
+              <SidebarContent />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex w-64 border-r border-border flex-col bg-card shadow-sm">
+        <SidebarContent />
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-background">
+      <main className="flex-1 overflow-auto bg-background pt-14 lg:pt-0">
         {children}
       </main>
-    </div>;
+    </div>
+  );
 };
 export default DashboardLayout;

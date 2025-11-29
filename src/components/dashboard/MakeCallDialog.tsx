@@ -251,10 +251,10 @@ export const MakeCallDialog = () => {
           Make Call
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle>Initiate Outbound Call</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Initiate Outbound Call</DialogTitle>
+          <DialogDescription className="text-sm">
             Start a call using your AI voice assistant
           </DialogDescription>
         </DialogHeader>
