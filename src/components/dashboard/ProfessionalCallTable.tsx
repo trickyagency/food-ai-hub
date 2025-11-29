@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Phone, Clock, MapPin } from "lucide-react";
+import { Phone, Clock, MapPin, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 interface CallLog {
@@ -85,6 +85,97 @@ const allCalls: CallLog[] = [
       "Customer: Perfect timing, we just got the order ready.",
     ]
   },
+  { 
+    id: "6", 
+    customer: "Sandwich Shop", 
+    phone: "+1 (555) 0128",
+    address: "888 Oak St, New York, NY",
+    duration: "3:10", 
+    status: "completed", 
+    timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! This is about your sandwich order.",
+      "Customer: Yes, we're ready for the order.",
+    ]
+  },
+  { 
+    id: "7", 
+    customer: "Coffee Corner", 
+    phone: "+1 (555) 0129",
+    address: "999 Elm St, New York, NY",
+    duration: "2:20", 
+    status: "completed", 
+    timestamp: new Date(Date.now() - 60 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! Confirming your coffee order.",
+      "Customer: Yes, that works for us.",
+    ]
+  },
+  { 
+    id: "8", 
+    customer: "BBQ Joint", 
+    phone: "+1 (555) 0130",
+    address: "111 Maple St, New York, NY",
+    duration: "3:55", 
+    status: "failed", 
+    timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! This is regarding your BBQ order.",
+      "Customer: Sorry, we can't take that order right now.",
+    ]
+  },
+  { 
+    id: "9", 
+    customer: "Thai Kitchen", 
+    phone: "+1 (555) 0131",
+    address: "222 Pine St, New York, NY",
+    duration: "4:15", 
+    status: "completed", 
+    timestamp: new Date(Date.now() - 84 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! This is about your Thai food order.",
+      "Customer: Yes, we can prepare that for you.",
+    ]
+  },
+  { 
+    id: "10", 
+    customer: "Deli Express", 
+    phone: "+1 (555) 0132",
+    address: "333 Cedar St, New York, NY",
+    duration: "2:50", 
+    status: "completed", 
+    timestamp: new Date(Date.now() - 96 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! Confirming your deli order.",
+      "Customer: Perfect, we're ready.",
+    ]
+  },
+  { 
+    id: "11", 
+    customer: "Bakery Bliss", 
+    phone: "+1 (555) 0133",
+    address: "444 Birch St, New York, NY",
+    duration: "3:30", 
+    status: "completed", 
+    timestamp: new Date(Date.now() - 108 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! This is about your bakery order.",
+      "Customer: Yes, we can handle that.",
+    ]
+  },
+  { 
+    id: "12", 
+    customer: "Vegan Delight", 
+    phone: "+1 (555) 0134",
+    address: "555 Willow St, New York, NY",
+    duration: "2:35", 
+    status: "completed", 
+    timestamp: new Date(Date.now() - 120 * 60 * 60 * 1000),
+    conversation: [
+      "AI: Hello! Confirming your vegan food order.",
+      "Customer: Yes, all set here.",
+    ]
+  },
 ];
 
 interface ProfessionalCallTableProps {
@@ -93,6 +184,9 @@ interface ProfessionalCallTableProps {
 
 const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAll, setShowAll] = useState(false);
+  const itemsPerPage = 10;
 
   const filteredCalls = dateRange?.from && dateRange?.to
     ? allCalls.filter(call => {
@@ -100,6 +194,16 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
         return callDate >= dateRange.from! && callDate <= dateRange.to!;
       })
     : allCalls;
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCalls = showAll ? filteredCalls : filteredCalls.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -129,10 +233,25 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
     <>
       <Card className="border-border bg-card">
         <CardHeader className="border-b border-border bg-muted/30">
-          <CardTitle className="text-xl font-bold text-foreground">Recent Calls</CardTitle>
-          <p className="text-sm text-muted-foreground mt-1">
-            View detailed call logs and conversations
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl font-bold text-foreground">Recent Calls</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                View detailed call logs and conversations
+              </p>
+            </div>
+            <Button
+              variant={showAll ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setShowAll(!showAll);
+                setCurrentPage(1);
+              }}
+              className="ml-4"
+            >
+              {showAll ? "Show Paginated" : "Show All"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -170,7 +289,7 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
                     </td>
                   </tr>
                 ) : (
-                  filteredCalls.map((call) => (
+                  paginatedCalls.map((call) => (
                     <tr
                       key={call.id}
                       className="hover:bg-muted/50 transition-colors"
@@ -224,6 +343,64 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {!showAll && filteredCalls.length > 0 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30">
+              <div className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredCalls.length)} of {filteredCalls.length} calls
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(page)}
+                      className="min-w-[40px]"
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
