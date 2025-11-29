@@ -175,26 +175,6 @@ const DatabaseFileManager = () => {
       userRole = roleData?.role;
     }
     
-    // Validate bucket exists before upload
-    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-    
-    if (bucketError) {
-      const errorMessage = `Failed to validate storage bucket: ${bucketError.message}`;
-      console.error(errorMessage);
-      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-      toast.error(`Bucket validation failed for ${fileData.file.name}`);
-      return;
-    }
-    
-    const bucketExists = buckets?.some(bucket => bucket.name === BUCKET_NAME);
-    if (!bucketExists) {
-      const errorMessage = `Storage bucket '${BUCKET_NAME}' not found. Please contact support.`;
-      console.error(errorMessage);
-      setFiles(prev => prev.map((f, i) => i === index ? { ...f, status: "error" as const } : f));
-      toast.error(`Bucket mismatch: ${BUCKET_NAME} not found`);
-      return;
-    }
-    
     // Create upload history record
     if (user) {
       await supabase.from('file_upload_history').insert({
