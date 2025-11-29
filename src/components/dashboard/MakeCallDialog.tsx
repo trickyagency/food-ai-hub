@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, Loader2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { Phone, Loader2, Check, ChevronsUpDown, Star, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
 import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 
 const phoneNumberSchema = z.string()
   .trim()
@@ -64,6 +67,58 @@ const formatPhoneNumber = (value: string, countryCode: CountryCode): string => {
   }
 };
 
+const RECENT_COUNTRIES_KEY = "vapi_recent_country_codes";
+const FAVORITE_COUNTRIES_KEY = "vapi_favorite_country_codes";
+
+const getRecentCountries = (): string[] => {
+  try {
+    const stored = localStorage.getItem(RECENT_COUNTRIES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveRecentCountry = (code: string) => {
+  try {
+    const recent = getRecentCountries();
+    const filtered = recent.filter((c) => c !== code);
+    const updated = [code, ...filtered].slice(0, 5); // Keep last 5
+    localStorage.setItem(RECENT_COUNTRIES_KEY, JSON.stringify(updated));
+  } catch (error) {
+    console.error("Failed to save recent country:", error);
+  }
+};
+
+const getFavoriteCountries = (): string[] => {
+  try {
+    const stored = localStorage.getItem(FAVORITE_COUNTRIES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const toggleFavoriteCountry = (code: string): boolean => {
+  try {
+    const favorites = getFavoriteCountries();
+    const isFavorite = favorites.includes(code);
+    
+    if (isFavorite) {
+      const updated = favorites.filter((c) => c !== code);
+      localStorage.setItem(FAVORITE_COUNTRIES_KEY, JSON.stringify(updated));
+      return false;
+    } else {
+      const updated = [...favorites, code];
+      localStorage.setItem(FAVORITE_COUNTRIES_KEY, JSON.stringify(updated));
+      return true;
+    }
+  } catch (error) {
+    console.error("Failed to toggle favorite:", error);
+    return false;
+  }
+};
+
 export const MakeCallDialog = () => {
   const [open, setOpen] = useState(false);
   const [countryCode, setCountryCode] = useState(countryCodes[0]); // Default to US
@@ -73,9 +128,18 @@ export const MakeCallDialog = () => {
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+  const [recentCountries, setRecentCountries] = useState<string[]>([]);
+  const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
 
   const { assistants, loading: assistantsLoading } = useVapiAssistants();
   const { phoneNumbers, loading: phoneNumbersLoading } = useVapiPhoneNumbers();
+
+  // Load recent and favorite countries on mount
+  useEffect(() => {
+    setRecentCountries(getRecentCountries());
+    setFavoriteCountries(getFavoriteCountries());
+  }, []);
 
   // Auto-format phone number as user types
   useEffect(() => {
@@ -96,6 +160,24 @@ export const MakeCallDialog = () => {
 
   const getFullPhoneNumber = (): string => {
     return `${countryCode.code}${localNumber}`;
+  };
+
+  const handleCountryCodeSelect = (code: string) => {
+    const selected = countryCodes.find((c) => c.code === code);
+    if (selected) {
+      setCountryCode(selected);
+      saveRecentCountry(code);
+      setRecentCountries(getRecentCountries());
+      setLocalNumber("");
+      setPhoneError(null);
+      setCountryPickerOpen(false);
+    }
+  };
+
+  const handleToggleFavorite = (code: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavoriteCountry(code);
+    setFavoriteCountries(getFavoriteCountries());
   };
 
   const handleMakeCall = async () => {
@@ -181,32 +263,135 @@ export const MakeCallDialog = () => {
             <Label htmlFor="phone">Customer Phone Number *</Label>
             
             <div className="flex gap-2">
-              <Select 
-                value={countryCode.code} 
-                onValueChange={(value) => {
-                  const selected = countryCodes.find(c => c.code === value);
-                  if (selected) {
-                    setCountryCode(selected);
-                    setLocalNumber("");
-                    setPhoneError(null);
-                  }
-                }}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px] bg-popover">
-                  {countryCodes.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      <span className="flex items-center gap-2">
-                        <span>{country.flag}</span>
-                        <span className="font-mono">{country.code}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={countryPickerOpen} onOpenChange={setCountryPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={countryPickerOpen}
+                    className="w-[160px] justify-between"
+                    disabled={isLoading}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{countryCode.flag}</span>
+                      <span className="font-mono">{countryCode.code}</span>
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0 bg-popover" align="start">
+                  <Command className="bg-popover">
+                    <CommandInput placeholder="Search country..." className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>No country found.</CommandEmpty>
+                      
+                      {favoriteCountries.length > 0 && (
+                        <>
+                          <CommandGroup heading="Favorites">
+                            {favoriteCountries.map((code) => {
+                              const country = countryCodes.find((c) => c.code === code);
+                              if (!country) return null;
+                              return (
+                                <CommandItem
+                                  key={country.code}
+                                  value={`${country.country} ${country.code}`}
+                                  onSelect={() => handleCountryCodeSelect(country.code)}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      countryCode.code === country.code ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  <span className="flex items-center gap-2 flex-1">
+                                    <span>{country.flag}</span>
+                                    <span>{country.country}</span>
+                                    <span className="font-mono text-muted-foreground">{country.code}</span>
+                                  </span>
+                                  <Star
+                                    className="h-4 w-4 fill-yellow-500 text-yellow-500"
+                                    onClick={(e) => handleToggleFavorite(country.code, e)}
+                                  />
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                          <CommandSeparator />
+                        </>
+                      )}
+                      
+                      {recentCountries.length > 0 && (
+                        <>
+                          <CommandGroup heading="Recent">
+                            {recentCountries
+                              .filter((code) => !favoriteCountries.includes(code))
+                              .map((code) => {
+                                const country = countryCodes.find((c) => c.code === code);
+                                if (!country) return null;
+                                return (
+                                  <CommandItem
+                                    key={country.code}
+                                    value={`${country.country} ${country.code}`}
+                                    onSelect={() => handleCountryCodeSelect(country.code)}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        countryCode.code === country.code ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <span className="flex items-center gap-2 flex-1">
+                                      <Clock className="h-3 w-3 text-muted-foreground" />
+                                      <span>{country.flag}</span>
+                                      <span>{country.country}</span>
+                                      <span className="font-mono text-muted-foreground">{country.code}</span>
+                                    </span>
+                                    <Star
+                                      className="h-4 w-4 text-muted-foreground hover:text-yellow-500"
+                                      onClick={(e) => handleToggleFavorite(country.code, e)}
+                                    />
+                                  </CommandItem>
+                                );
+                              })}
+                          </CommandGroup>
+                          <CommandSeparator />
+                        </>
+                      )}
+                      
+                      <CommandGroup heading="All Countries">
+                        {countryCodes.map((country) => (
+                          <CommandItem
+                            key={country.code}
+                            value={`${country.country} ${country.code}`}
+                            onSelect={() => handleCountryCodeSelect(country.code)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                countryCode.code === country.code ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <span className="flex items-center gap-2 flex-1">
+                              <span>{country.flag}</span>
+                              <span>{country.country}</span>
+                              <span className="font-mono text-muted-foreground">{country.code}</span>
+                            </span>
+                            <Star
+                              className={cn(
+                                "h-4 w-4",
+                                favoriteCountries.includes(country.code)
+                                  ? "fill-yellow-500 text-yellow-500"
+                                  : "text-muted-foreground hover:text-yellow-500"
+                              )}
+                              onClick={(e) => handleToggleFavorite(country.code, e)}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
 
               <div className="flex-1">
                 <Input
