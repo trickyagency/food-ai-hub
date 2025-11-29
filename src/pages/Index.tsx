@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import RadialMetricCard from "@/components/dashboard/RadialMetricCard";
 import TimeFilter from "@/components/dashboard/TimeFilter";
@@ -7,6 +7,10 @@ import QuickDateRanges from "@/components/dashboard/QuickDateRanges";
 import EnhancedCallLogTable from "@/components/dashboard/EnhancedCallLogTable";
 import OrderMetrics from "@/components/dashboard/OrderMetrics";
 import AdvancedAnalytics from "@/components/dashboard/AdvancedAnalytics";
+import { ExportData } from "@/components/dashboard/ExportData";
+import { MetricCardsSkeletonGrid } from "@/components/dashboard/MetricCardSkeleton";
+import { ChartSkeleton } from "@/components/dashboard/ChartSkeleton";
+import { PageTransition } from "@/components/PageTransition";
 import { ProtectedFeature } from "@/components/ProtectedFeature";
 import { Phone, TrendingUp, Clock, CheckCircle2, PhoneForwarded } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -19,14 +23,33 @@ const Index = () => {
   const { role } = useUserRole();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("days");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Define what each role can see
   const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
   const canSeeCallLogs = role !== "viewer";
 
+  // Simulate data loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1200);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  const metrics = {
+    totalCalls: "1,247",
+    forwardedCalls: "342",
+    successRate: "94.2%",
+    avgDuration: "3m 24s",
+    conversionRate: "67.8%",
+  };
+
   return (
     <DashboardLayout>
-      <div className="p-6 sm:p-8 lg:p-10 space-y-8 animate-fade-in max-w-[1800px] mx-auto">
+      <PageTransition>
+        <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto dashboard-content">
         {/* Header */}
         <div className="flex flex-col gap-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
@@ -39,12 +62,13 @@ const Index = () => {
               </p>
             </div>
             {canSeeAdvancedMetrics && (
-              <div className="flex flex-col sm:flex-row gap-3 lg:pt-1">
+              <div className="flex flex-wrap items-center gap-3 lg:pt-1">
                 <TimeFilter selected={timePeriod} onChange={setTimePeriod} />
                 <DateRangePicker 
                   dateRange={dateRange} 
                   onDateRangeChange={setDateRange}
                 />
+                <ExportData metrics={metrics} />
               </div>
             )}
           </div>
@@ -58,8 +82,11 @@ const Index = () => {
         </div>
 
         {/* Call Metrics - Radial Charts */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
-          <RadialMetricCard
+        {isLoading ? (
+          <MetricCardsSkeletonGrid />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+            <RadialMetricCard
             title="Total Calls"
             value="1,247"
             percentage={85}
@@ -125,21 +152,26 @@ const Index = () => {
               </Card>
             </>
           )}
-        </div>
+          </div>
+        )}
 
         {/* Order Metrics */}
-        {canSeeAdvancedMetrics && (
+        {canSeeAdvancedMetrics && (isLoading ? (
+          <ChartSkeleton />
+        ) : (
           <div className="animate-fade-in" style={{ animationDelay: "200ms" }}>
             <OrderMetrics dateRange={dateRange} />
           </div>
-        )}
+        ))}
 
         {/* Advanced Analytics */}
-        {canSeeAdvancedMetrics && (
+        {canSeeAdvancedMetrics && (isLoading ? (
+          <ChartSkeleton />
+        ) : (
           <div className="animate-fade-in" style={{ animationDelay: "300ms" }}>
             <AdvancedAnalytics dateRange={dateRange} />
           </div>
-        )}
+        ))}
 
         {/* Recent Calls - Enhanced with Conversation Viewer */}
         {canSeeCallLogs ? (
@@ -158,7 +190,8 @@ const Index = () => {
             </CardContent>
           </Card>
         )}
-      </div>
+        </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };

@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import DatabaseFileManager from "@/components/DatabaseFileManager";
 import { ProtectedFeature } from "@/components/ProtectedFeature";
+import { PageTransition } from "@/components/PageTransition";
 import { Database } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShieldAlert } from "lucide-react";
@@ -8,6 +9,7 @@ import { ShieldAlert } from "lucide-react";
 const Upload = () => {
   return (
     <DashboardLayout>
+      <PageTransition>
       <div className="p-6 sm:p-8 lg:p-10 space-y-8 max-w-[1800px] mx-auto">
         {/* Header */}
         <div className="space-y-3 pb-6 border-b border-border/50">
@@ -48,6 +50,7 @@ const Upload = () => {
           <DatabaseFileManager />
         </ProtectedFeature>
       </div>
+      </PageTransition>
     </DashboardLayout>
   );
 };
