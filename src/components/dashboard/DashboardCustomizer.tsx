@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Settings2, RotateCcw } from "lucide-react";
+import { Settings2, RotateCcw, Save } from "lucide-react";
 import { AVAILABLE_WIDGETS } from "@/types/dashboard";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -19,18 +19,25 @@ interface DashboardCustomizerProps {
   visibleWidgets: string[];
   onToggleWidget: (widgetId: string) => void;
   onResetLayout: () => void;
+  onSaveLayout: () => void;
 }
 
 export const DashboardCustomizer = ({
   visibleWidgets,
   onToggleWidget,
   onResetLayout,
+  onSaveLayout,
 }: DashboardCustomizerProps) => {
   const [open, setOpen] = useState(false);
 
   const handleReset = () => {
     onResetLayout();
     toast.success("Dashboard layout reset to default");
+  };
+
+  const handleSave = () => {
+    onSaveLayout();
+    toast.success("Dashboard layout saved successfully");
   };
 
   return (
@@ -82,20 +89,31 @@ export const DashboardCustomizer = ({
 
           <Separator className="bg-slate-200 dark:bg-slate-800" />
 
-          {/* Reset Button */}
+          {/* Layout Controls */}
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Layout</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="w-full gap-2"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset to Default
-            </Button>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Layout Controls</h3>
+            <div className="space-y-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleSave}
+                className="w-full gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Save Current Layout
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="w-full gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset to Default
+              </Button>
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Restore original widget positions and sizes
+              Drag widgets to reorder, resize by dragging corners. Changes auto-save.
             </p>
           </div>
         </div>

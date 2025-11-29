@@ -72,6 +72,7 @@ const Index = () => {
                   visibleWidgets={config.visibleWidgets}
                   onToggleWidget={toggleWidget}
                   onResetLayout={resetLayout}
+                  onSaveLayout={() => saveLayout(config.layouts)}
                 />
                 <ExportData metrics={metrics} />
               </div>
