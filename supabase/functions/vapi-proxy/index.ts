@@ -23,11 +23,14 @@ serve(async (req) => {
       );
     }
 
-    const url = new URL(req.url);
-    const endpoint = url.searchParams.get("endpoint") || "/call";
-    const method = req.method;
+    // Parse the request body to extract our routing parameter
+    const requestBody = await req.json();
+    const endpoint = requestBody.endpoint || "/call";
+    
+    // Remove the endpoint field from the body before forwarding to Vapi
+    const { endpoint: _, ...vapiBody } = requestBody;
 
-    console.log(`Proxying ${method} request to Vapi: ${endpoint}`);
+    console.log(`Proxying ${req.method} request to Vapi: ${endpoint}`);
 
     // Prepare request to Vapi API
     const vapiUrl = `${VAPI_BASE_URL}${endpoint}`;
@@ -37,16 +40,14 @@ serve(async (req) => {
     };
 
     let vapiRequestInit: RequestInit = {
-      method,
+      method: "GET", // Default to GET
       headers: vapiHeaders,
     };
 
-    // Add body for POST/PUT/PATCH requests
-    if (method === "POST" || method === "PUT" || method === "PATCH") {
-      const body = await req.text();
-      if (body) {
-        vapiRequestInit.body = body;
-      }
+    // Only add body if there are remaining fields after removing endpoint
+    if (Object.keys(vapiBody).length > 0) {
+      vapiRequestInit.method = "POST";
+      vapiRequestInit.body = JSON.stringify(vapiBody);
     }
 
     console.log(`Making request to: ${vapiUrl}`);
