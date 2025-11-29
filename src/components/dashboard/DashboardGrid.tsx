@@ -100,7 +100,7 @@ export const DashboardGrid = ({
       containerPadding={[0, 0]}
     >
       {visibleWidgets.map((widgetId) => (
-        <div key={widgetId} className="dashboard-widget">
+        <div key={widgetId} className="h-full overflow-visible">
           {renderWidget(widgetId)}
         </div>
       ))}

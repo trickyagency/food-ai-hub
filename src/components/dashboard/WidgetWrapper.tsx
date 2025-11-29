@@ -14,7 +14,7 @@ export const WidgetWrapper = ({ children, title, isDragging }: WidgetWrapperProp
   return (
     <div 
       className={`
-        relative overflow-visible bg-card border border-border rounded-xl shadow-md hover:shadow-xl
+        relative h-full overflow-visible bg-card border border-border rounded-xl shadow-md hover:shadow-xl
         transition-all duration-300
         ${isDragging ? "opacity-50 cursor-grabbing" : ""}
       `}
@@ -44,7 +44,7 @@ export const WidgetWrapper = ({ children, title, isDragging }: WidgetWrapperProp
       </div>
       
       {/* Widget Content */}
-      <div className={isCollapsed ? "hidden" : ""}>
+      <div className={isCollapsed ? "hidden" : "h-full overflow-visible"}>
         {children}
       </div>
 
