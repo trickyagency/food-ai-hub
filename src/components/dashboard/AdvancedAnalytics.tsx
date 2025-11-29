@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { TrendingUp, Activity, Zap } from "lucide-react";
+import { TrendingUp, Activity, Zap, Calendar } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 const performanceData = [
   { time: "00:00", calls: 45, success: 42, duration: 180 },
@@ -22,14 +25,28 @@ const conversionData = [
   { day: "Sun", conversion: 73, orders: 278 },
 ];
 
-const AdvancedAnalytics = () => {
+interface AdvancedAnalyticsProps {
+  dateRange?: DateRange;
+}
+
+const AdvancedAnalytics = ({ dateRange }: AdvancedAnalyticsProps) => {
   return (
     <Card className="bg-gradient-card border-border/50 shadow-elegant">
       <CardHeader>
-        <CardTitle className="text-foreground flex items-center gap-2">
-          <Activity className="w-5 h-5 text-primary" />
-          Advanced Analytics
-        </CardTitle>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <Activity className="w-5 h-5 text-primary" />
+            Advanced Analytics
+          </CardTitle>
+          {dateRange?.from && dateRange?.to && (
+            <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5">
+              <Calendar className="w-3 h-3" />
+              <span className="text-xs">
+                {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}
+              </span>
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="performance" className="space-y-4">

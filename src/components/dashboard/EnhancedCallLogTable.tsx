@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Clock, CheckCircle2, XCircle, MessageSquare, MapPin, PhoneCall } from "lucide-react";
+import { Phone, Clock, CheckCircle2, XCircle, MessageSquare, MapPin, PhoneCall, Calendar } from "lucide-react";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 interface CallLog {
   id: string;
@@ -86,7 +88,11 @@ const mockCalls: CallLog[] = [
   },
 ];
 
-const EnhancedCallLogTable = () => {
+interface EnhancedCallLogTableProps {
+  dateRange?: DateRange;
+}
+
+const EnhancedCallLogTable = ({ dateRange }: EnhancedCallLogTableProps) => {
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
 
   const getStatusColor = (status: CallLog["status"]) => {
@@ -109,10 +115,20 @@ const EnhancedCallLogTable = () => {
     <>
       <Card className="bg-gradient-card border-border/50 shadow-elegant overflow-hidden">
         <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-          <CardTitle className="text-foreground flex items-center gap-2">
-            <PhoneCall className="w-5 h-5 text-primary" />
-            Recent Calls
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle className="text-foreground flex items-center gap-2">
+              <PhoneCall className="w-5 h-5 text-primary" />
+              Recent Calls
+            </CardTitle>
+            {dateRange?.from && dateRange?.to && (
+              <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary gap-1.5">
+                <Calendar className="w-3 h-3" />
+                <span className="text-xs">
+                  {format(dateRange.from, "MMM dd")} - {format(dateRange.to, "MMM dd, yyyy")}
+                </span>
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
