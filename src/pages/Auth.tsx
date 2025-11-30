@@ -58,9 +58,11 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     try {
+      console.log('Google sign-in button clicked');
       await signInWithGoogle();
-    } catch (error) {
-      toast.error("Google sign-in failed");
+    } catch (error: any) {
+      console.error('Google sign-in error:', error);
+      toast.error(error?.message || "Google sign-in failed. Please check your configuration.");
     }
   };
 
