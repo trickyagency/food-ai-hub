@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Database, FileText, Plus, Trash2, Loader2, CheckCircle2, BrainCircuit } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+
 interface VapiFile {
   id: string;
   file_name: string;
@@ -17,11 +17,7 @@ interface VapiFile {
   created_at: string;
   user_id: string;
 }
-interface Assistant {
-  id: string;
-  name: string;
-  user_id: string;
-}
+
 interface KnowledgeBase {
   id: string;
   name: string;
@@ -31,130 +27,137 @@ interface KnowledgeBase {
   status: string;
   user_id: string;
 }
+
+// Hardcoded Riley assistant
+const RILEY_ASSISTANT_ID = "d9f41449-6376-40fe-b7e7-9d51f87be464";
+const RILEY_ASSISTANT_NAME = "Riley";
+
 const KnowledgeBaseManager = () => {
-  const {
-    toast
-  } = useToast();
-  const {
-    user
-  } = useAuth();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  
   const [files, setFiles] = useState<VapiFile[]>([]);
-  const [assistants, setAssistants] = useState<Assistant[]>([]);
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [selectedAssistant, setSelectedAssistant] = useState<string>("");
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [fileToRemove, setFileToRemove] = useState<VapiFile | null>(null);
+
   const fetchData = async () => {
     if (!user) return;
+    
     try {
       setLoading(true);
 
       // Fetch all vapi files that are synced
-      const {
-        data: vapiFiles,
-        error: filesError
-      } = await supabase.from("vapi_files").select("*").eq("user_id", user.id).eq("status", "done").order("created_at", {
-        ascending: false
-      });
+      const { data: vapiFiles, error: filesError } = await supabase
+        .from("vapi_files")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "done")
+        .order("created_at", { ascending: false });
+      
       if (filesError) throw filesError;
       setFiles(vapiFiles || []);
 
-      // Fetch assistants
-      const {
-        data: assistantsData,
-        error: assistantsError
-      } = await supabase.from("vapi_assistants_cache").select("id, name, user_id").eq("user_id", user.id).order("name");
-      if (assistantsError) throw assistantsError;
-      setAssistants(assistantsData || []);
-
       // Fetch the single global knowledge base
-      const {
-        data: kbData,
-        error: kbError
-      } = await supabase.from("vapi_knowledge_bases").select("*").eq("user_id", user.id).eq("name", "Global Knowledge Base").maybeSingle();
+      const { data: kbData, error: kbError } = await supabase
+        .from("vapi_knowledge_bases")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("name", "Global Knowledge Base")
+        .maybeSingle();
+      
       if (kbError) throw kbError;
       setKnowledgeBase(kbData);
-      if (kbData?.assistant_id) {
-        setSelectedAssistant(kbData.assistant_id);
-      }
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to load knowledge base data",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchData();
   }, [user]);
+
   const addFileToKB = async (fileId: string) => {
     if (!user) return;
+    
     try {
       setSyncing(true);
       const currentFileIds = knowledgeBase?.file_ids || [];
       const updatedFileIds = [...currentFileIds, fileId];
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("vapi-kb-sync", {
+
+      console.log("Adding file to KB for Riley assistant:", { fileId, updatedFileIds, assistantId: RILEY_ASSISTANT_ID });
+
+      const { data, error } = await supabase.functions.invoke("vapi-kb-sync", {
         body: {
           knowledgeBaseName: "Global Knowledge Base",
-          assistantId: knowledgeBase?.assistant_id || null,
-          fileIds: updatedFileIds
-        }
+          fileIds: updatedFileIds,
+          assistantId: RILEY_ASSISTANT_ID,
+        },
       });
+
       if (error) throw error;
+
+      console.log("KB sync response:", data);
+
       toast({
         title: "Success",
-        description: "File added to knowledge base"
+        description: `File added to ${RILEY_ASSISTANT_NAME}'s knowledge base successfully`,
       });
+
       await fetchData();
     } catch (error: any) {
       console.error("Error adding file to KB:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to add file to knowledge base",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setSyncing(false);
     }
   };
+
   const openRemoveDialog = (file: VapiFile) => {
     setFileToRemove(file);
     setRemoveDialogOpen(true);
   };
+
   const confirmRemoveFile = async () => {
     if (!fileToRemove || !user) return;
+    
     try {
       setSyncing(true);
-      const updatedFileIds = (knowledgeBase?.file_ids || []).filter(id => id !== fileToRemove.id);
-      const {
-        error
-      } = await supabase.functions.invoke("vapi-kb-unsync", {
+      
+      const { error } = await supabase.functions.invoke("vapi-kb-unsync", {
         body: {
           knowledgeBaseId: knowledgeBase?.id,
-          fileId: fileToRemove.id
-        }
+          fileId: fileToRemove.id,
+        },
       });
+
       if (error) throw error;
+
       toast({
         title: "Success",
-        description: "File removed from knowledge base"
+        description: "File removed from knowledge base",
       });
+
       await fetchData();
     } catch (error: any) {
       console.error("Error removing file from KB:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to remove file from knowledge base",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setSyncing(false);
@@ -162,52 +165,20 @@ const KnowledgeBaseManager = () => {
       setFileToRemove(null);
     }
   };
-  const attachKBToAssistant = async () => {
-    if (!user || !selectedAssistant) {
-      toast({
-        title: "Error",
-        description: "Please select an assistant",
-        variant: "destructive"
-      });
-      return;
-    }
-    try {
-      setSyncing(true);
-      const {
-        error
-      } = await supabase.functions.invoke("vapi-kb-sync", {
-        body: {
-          knowledgeBaseName: "Global Knowledge Base",
-          assistantId: selectedAssistant,
-          fileIds: knowledgeBase?.file_ids || []
-        }
-      });
-      if (error) throw error;
-      toast({
-        title: "Success",
-        description: "Knowledge base attached to assistant"
-      });
-      await fetchData();
-    } catch (error: any) {
-      console.error("Error attaching KB to assistant:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to attach knowledge base to assistant",
-        variant: "destructive"
-      });
-    } finally {
-      setSyncing(false);
-    }
-  };
-  const filesInKB = files.filter(file => knowledgeBase?.file_ids?.includes(file.id));
-  const availableFiles = files.filter(file => !knowledgeBase?.file_ids?.includes(file.id));
-  const currentAssistant = assistants.find(a => a.id === knowledgeBase?.assistant_id);
+
+  const filesInKB = files.filter((file) => knowledgeBase?.file_ids?.includes(file.id));
+  const availableFiles = files.filter((file) => !knowledgeBase?.file_ids?.includes(file.id));
+
   if (loading) {
-    return <div className="flex items-center justify-center p-12">
+    return (
+      <div className="flex items-center justify-center p-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
-  return <>
+
+  return (
+    <>
       <div className="space-y-6">
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
@@ -243,11 +214,11 @@ const KnowledgeBaseManager = () => {
 
           <Card className="border-border/50 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Assistants</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Assistant</CardTitle>
+              <BrainCircuit className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{assistants.length}</div>
+              <div className="text-2xl font-bold">{RILEY_ASSISTANT_NAME}</div>
             </CardContent>
           </Card>
         </div>
@@ -264,12 +235,19 @@ const KnowledgeBaseManager = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {filesInKB.length === 0 ? <div className="text-center py-8 text-muted-foreground">
+            {filesInKB.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">No files in knowledge base yet</p>
                 <p className="text-xs mt-1">Add files from the available files section below</p>
-              </div> : <div className="space-y-2">
-                {filesInKB.map(file => <div key={file.id} className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors">
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filesInKB.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <FileText className="w-5 h-5 text-primary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -283,12 +261,20 @@ const KnowledgeBaseManager = () => {
                         In KB
                       </Badge>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => openRemoveDialog(file)} disabled={syncing} className="ml-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openRemoveDialog(file)}
+                      disabled={syncing}
+                      className="ml-3"
+                    >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Remove from Knowledge Base
                     </Button>
-                  </div>)}
-              </div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -304,11 +290,18 @@ const KnowledgeBaseManager = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {availableFiles.length === 0 ? <div className="text-center py-8 text-muted-foreground">
+            {availableFiles.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
                 <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">All synced files are in the knowledge base</p>
-              </div> : <div className="space-y-2">
-                {availableFiles.map(file => <div key={file.id} className="flex items-center justify-between p-4 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors">
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -321,60 +314,45 @@ const KnowledgeBaseManager = () => {
                         🟢 Synced to Vapi
                       </Badge>
                     </div>
-                    <Button variant="default" size="sm" onClick={() => addFileToKB(file.id)} disabled={syncing} className="ml-3">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => addFileToKB(file.id)}
+                      disabled={syncing}
+                      className="ml-3"
+                    >
                       <Plus className="w-4 h-4 mr-2" />
                       Add to KB
                     </Button>
-                  </div>)}
-              </div>}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Assistant Selection */}
+        {/* Knowledge Base Assistant */}
         <Card className="border-border/50 shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BrainCircuit className="w-5 h-5 text-primary" />
-              Assistant Using Knowledge Base
+              <BrainCircuit className="w-5 h-5" />
+              Knowledge Base Assistant
             </CardTitle>
             <CardDescription>
-              Select which assistant should use this knowledge base
+              This knowledge base is used by the Riley assistant
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select an assistant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assistants.map(assistant => <SelectItem key={assistant.id} value={assistant.id}>
-                      {assistant.name}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button onClick={attachKBToAssistant} disabled={syncing || !selectedAssistant}>
-                {syncing ? <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Attaching...
-                  </> : <>
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Attach KB to Assistant
-                  </>}
-              </Button>
+            <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg bg-muted/30">
+              <div className="space-y-1">
+                <p className="font-medium">{RILEY_ASSISTANT_NAME}</p>
+                <p className="text-sm text-muted-foreground font-mono">{RILEY_ASSISTANT_ID}</p>
+              </div>
+              <Badge variant="default" className="bg-primary">
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                Active
+              </Badge>
             </div>
-
-            {currentAssistant && <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
-                <p className="text-sm text-foreground">
-                  <span className="font-semibold">Currently attached to:</span>{" "}
-                  {currentAssistant.name}
-                </p>
-              </div>}
-
-            {assistants.length === 0 && <div className="text-center py-4 text-muted-foreground">
-                <p className="text-sm">No assistants available</p>
-                <p className="text-xs mt-1">Create an assistant in Vapi first</p>
-              </div>}
           </CardContent>
         </Card>
 
@@ -389,8 +367,8 @@ const KnowledgeBaseManager = () => {
             <p>1. Upload files in the <strong>Database Files</strong> section</p>
             <p>2. Files are automatically synced to Vapi</p>
             <p>3. Add files to the knowledge base using the <strong>Add to KB</strong> button</p>
-            <p>4. Select which assistant should use the knowledge base</p>
-            <p>5. The assistant will use all files in the knowledge base for answering questions</p>
+            <p>4. All files in the knowledge base are used by the Riley assistant</p>
+            <p>5. The assistant will use these files for answering questions</p>
           </CardContent>
         </Card>
       </div>
@@ -413,6 +391,8 @@ const KnowledgeBaseManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>;
+    </>
+  );
 };
+
 export default KnowledgeBaseManager;
