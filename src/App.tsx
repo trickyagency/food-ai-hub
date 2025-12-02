@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
+import KnowledgeBase from "./pages/KnowledgeBase";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/knowledge-base"
+              element={
+                <ProtectedRoute>
+                  <KnowledgeBase />
                 </ProtectedRoute>
               }
             />
