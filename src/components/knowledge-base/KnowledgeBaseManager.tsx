@@ -1,535 +1,502 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { supabase } from "@/integrations/supabase/client";
-import { useVapiAssistants } from "@/hooks/useVapiAssistants";
-import { toast } from "sonner";
-import { Loader2, Database, CheckCircle2, FileText, Unlink, AlertTriangle, Link2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Database, FileText, Plus, Trash2, Loader2, CheckCircle2, BrainCircuit } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface VapiFile {
   id: string;
-  vapi_file_id: string | null;
-  local_file_id: string;
   file_name: string;
-  status: string;
+  vapi_file_id: string | null;
   vapi_url: string | null;
-  error_message: string | null;
+  status: string;
+  created_at: string;
+  user_id: string;
+}
+
+interface Assistant {
+  id: string;
+  name: string;
+  user_id: string;
 }
 
 interface KnowledgeBase {
   id: string;
-  vapi_kb_id: string | null;
   name: string;
-  assistant_id: string | null;
+  vapi_kb_id: string | null;
   file_ids: string[];
-  created_at: string;
-  updated_at: string;
+  assistant_id: string | null;
+  status: string;
+  user_id: string;
 }
 
 const KnowledgeBaseManager = () => {
+  const { toast } = useToast();
+  const { user } = useAuth();
   const [files, setFiles] = useState<VapiFile[]>([]);
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [assistants, setAssistants] = useState<Assistant[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [selectedAssistant, setSelectedAssistant] = useState("");
   const [syncing, setSyncing] = useState(false);
-  const [unsyncDialogOpen, setUnsyncDialogOpen] = useState(false);
-  const [fileToUnsync, setFileToUnsync] = useState<{
-    kbId: string;
-    vapiFileId: string;
-    fileName: string;
-    assistantName: string;
-  } | null>(null);
-  const [perFileAssistant, setPerFileAssistant] = useState<Record<string, string>>({});
-  const { assistants } = useVapiAssistants();
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [selectedAssistant, setSelectedAssistant] = useState<string>("");
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [fileToRemove, setFileToRemove] = useState<VapiFile | null>(null);
 
   const fetchData = async () => {
+    if (!user) return;
+
     try {
       setLoading(true);
-      
-      // Fetch Vapi files
-      const { data: filesData, error: filesError } = await supabase
+
+      // Fetch all vapi files that are synced
+      const { data: vapiFiles, error: filesError } = await supabase
         .from("vapi_files")
         .select("*")
+        .eq("user_id", user.id)
+        .eq("status", "synced")
         .order("created_at", { ascending: false });
 
       if (filesError) throw filesError;
-      setFiles(filesData || []);
+      setFiles(vapiFiles || []);
 
-      // Fetch knowledge bases
+      // Fetch assistants
+      const { data: assistantsData, error: assistantsError } = await supabase
+        .from("vapi_assistants_cache")
+        .select("id, name, user_id")
+        .eq("user_id", user.id)
+        .order("name");
+
+      if (assistantsError) throw assistantsError;
+      setAssistants(assistantsData || []);
+
+      // Fetch the single global knowledge base
       const { data: kbData, error: kbError } = await supabase
         .from("vapi_knowledge_bases")
         .select("*")
-        .order("created_at", { ascending: false });
+        .eq("user_id", user.id)
+        .eq("name", "Global Knowledge Base")
+        .maybeSingle();
 
       if (kbError) throw kbError;
-      setKnowledgeBases(kbData || []);
-    } catch (error) {
+      setKnowledgeBase(kbData);
+
+      if (kbData?.assistant_id) {
+        setSelectedAssistant(kbData.assistant_id);
+      }
+    } catch (error: any) {
       console.error("Error fetching data:", error);
-      toast.error("Failed to load data");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load knowledge base data",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const assignFilesToAssistant = async () => {
-    if (!selectedAssistant) {
-      toast.error("Please select an assistant");
-      return;
-    }
+  useEffect(() => {
+    fetchData();
+  }, [user]);
 
-    if (selectedFiles.length === 0) {
-      toast.error("Please select at least one file");
+  const addFileToKB = async (fileId: string) => {
+    if (!user) return;
+
+    try {
+      setSyncing(true);
+
+      const currentFileIds = knowledgeBase?.file_ids || [];
+      const updatedFileIds = [...currentFileIds, fileId];
+
+      const { data, error } = await supabase.functions.invoke("vapi-kb-sync", {
+        body: {
+          knowledgeBaseName: "Global Knowledge Base",
+          assistantId: knowledgeBase?.assistant_id || null,
+          fileIds: updatedFileIds,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "File added to knowledge base",
+      });
+
+      await fetchData();
+    } catch (error: any) {
+      console.error("Error adding file to KB:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add file to knowledge base",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const openRemoveDialog = (file: VapiFile) => {
+    setFileToRemove(file);
+    setRemoveDialogOpen(true);
+  };
+
+  const confirmRemoveFile = async () => {
+    if (!fileToRemove || !user) return;
+
+    try {
+      setSyncing(true);
+
+      const updatedFileIds = (knowledgeBase?.file_ids || []).filter(
+        (id) => id !== fileToRemove.id
+      );
+
+      const { error } = await supabase.functions.invoke("vapi-kb-unsync", {
+        body: {
+          knowledgeBaseId: knowledgeBase?.id,
+          fileId: fileToRemove.id,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "File removed from knowledge base",
+      });
+
+      await fetchData();
+    } catch (error: any) {
+      console.error("Error removing file from KB:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove file from knowledge base",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+      setRemoveDialogOpen(false);
+      setFileToRemove(null);
+    }
+  };
+
+  const attachKBToAssistant = async () => {
+    if (!user || !selectedAssistant) {
+      toast({
+        title: "Error",
+        description: "Please select an assistant",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       setSyncing(true);
-      
-      const existingKb = knowledgeBases.find(kb => kb.assistant_id === selectedAssistant);
-      const assistantName = assistants.find(a => a.id === selectedAssistant)?.name || "Assistant";
-      
-      let fileIds = selectedFiles;
-      
-      if (existingKb) {
-        fileIds = [...new Set([...(existingKb.file_ids || []), ...selectedFiles])];
-      }
 
-      const { data, error } = await supabase.functions.invoke("vapi-kb-sync", {
+      const { error } = await supabase.functions.invoke("vapi-kb-sync", {
         body: {
-          knowledgeBaseName: `${assistantName} Knowledge Base`,
+          knowledgeBaseName: "Global Knowledge Base",
           assistantId: selectedAssistant,
-          fileIds: fileIds,
+          fileIds: knowledgeBase?.file_ids || [],
         },
       });
 
       if (error) throw error;
 
-      toast.success(`Files assigned to ${assistantName}`);
-      setSelectedFiles([]);
-      setSelectedAssistant("");
-      fetchData();
-    } catch (error: any) {
-      console.error("Assignment error:", error);
-      toast.error(error.message || "Failed to assign files");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const openUnsyncDialog = (kbId: string, vapiFileId: string, fileName: string, assistantName: string) => {
-    setFileToUnsync({ kbId, vapiFileId, fileName, assistantName });
-    setUnsyncDialogOpen(true);
-  };
-
-  const confirmUnsyncFile = async () => {
-    if (!fileToUnsync) return;
-    
-    const { kbId, vapiFileId, fileName } = fileToUnsync;
-
-    try {
-      const { data, error } = await supabase.functions.invoke("vapi-kb-unsync", {
-        body: {
-          knowledgeBaseId: kbId,
-          vapiFileId: vapiFileId,
-        },
+      toast({
+        title: "Success",
+        description: "Knowledge base attached to assistant",
       });
 
-      if (error) throw error;
-
-      toast.success(`${fileName} removed from knowledge base`);
-      fetchData();
-    } catch (error: any) {
-      console.error("Unsync error:", error);
-      toast.error(error.message || "Failed to unsync file");
-    } finally {
-      setUnsyncDialogOpen(false);
-      setFileToUnsync(null);
-    }
-  };
-
-  const syncSingleFile = async (fileId: string, assistantId: string) => {
-    if (!assistantId) {
-      toast.error("Please select an assistant");
-      return;
-    }
-
-    setSyncing(true);
-    try {
-      const assistantName = assistants.find(a => a.id === assistantId)?.name || "Assistant";
-      
-      const { data, error } = await supabase.functions.invoke("vapi-kb-sync", {
-        body: {
-          knowledgeBaseName: `${assistantName} Knowledge Base`,
-          assistantId: assistantId,
-          fileIds: [fileId],
-        },
-      });
-
-      if (error) throw error;
-
-      toast.success("File synced to assistant successfully");
       await fetchData();
-      setPerFileAssistant(prev => ({ ...prev, [fileId]: "" }));
     } catch (error: any) {
-      console.error("Error syncing file:", error);
-      toast.error(error.message || "Failed to sync file to assistant");
+      console.error("Error attaching KB to assistant:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to attach knowledge base to assistant",
+        variant: "destructive",
+      });
     } finally {
       setSyncing(false);
     }
   };
 
-  const getFileAssignment = (vapiFileId: string | null) => {
-    if (!vapiFileId) return null;
-    const kb = knowledgeBases.find(k => k.file_ids?.includes(vapiFileId));
-    if (!kb) return null;
-    const assistant = assistants.find(a => a.id === kb.assistant_id);
-    return { kb, assistant };
-  };
+  const filesInKB = files.filter((file) =>
+    knowledgeBase?.file_ids?.includes(file.id)
+  );
 
-  const isFileAssigned = (vapiFileId: string | null) => {
-    if (!vapiFileId) return false;
-    return knowledgeBases.some(k => k.file_ids?.includes(vapiFileId));
-  };
+  const availableFiles = files.filter(
+    (file) => !knowledgeBase?.file_ids?.includes(file.id)
+  );
 
-  const syncedFiles = files.filter(f => f.status === "done" && f.vapi_file_id);
-  const unassignedFiles = syncedFiles.filter(f => f.vapi_file_id && !isFileAssigned(f.vapi_file_id));
-  const assignedFiles = syncedFiles.filter(f => f.vapi_file_id && isFileAssigned(f.vapi_file_id));
-  
-  const allUnassignedSelected = unassignedFiles.length > 0 && 
-    unassignedFiles.every(f => selectedFiles.includes(f.local_file_id || ""));
+  const currentAssistant = assistants.find(
+    (a) => a.id === knowledgeBase?.assistant_id
+  );
 
-  const toggleSelectAll = () => {
-    if (allUnassignedSelected) {
-      setSelectedFiles([]);
-    } else {
-      setSelectedFiles(unassignedFiles.map(f => f.local_file_id || "").filter(Boolean));
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-border/50 shadow-sm">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Database className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl">Knowledge Base Manager</CardTitle>
-              <CardDescription>
-                Assign files to assistants - knowledge bases are managed automatically
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-border/50">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-primary">{syncedFiles.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Files in Vapi</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-primary">{assistants.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Assistants</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-primary">{assignedFiles.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Assigned</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-primary">{unassignedFiles.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Available</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+    <>
+      <div className="space-y-6">
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Files in Vapi</CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{files.length}</div>
+            </CardContent>
+          </Card>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : syncedFiles.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No files synced to Vapi yet</p>
-              <p className="text-sm mt-1">Upload files to Database Files section first</p>
-            </div>
-          ) : (
-            <>
-              {/* Assigned Files Section */}
-              {assignedFiles.length > 0 && (
-                <Card className="border-border/50 bg-muted/30">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Link2 className="w-5 h-5 text-primary" />
-                      📎 Assigned Files ({assignedFiles.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {assignedFiles.map((file) => {
-                      const assignment = getFileAssignment(file.vapi_file_id);
-                      
-                      return (
-                        <Card key={file.id} className="border-border/50">
-                          <CardContent className="pt-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0 space-y-2">
-                                <div>
-                                  <p className="font-medium truncate">{file.file_name}</p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    Vapi ID: {file.vapi_file_id?.substring(0, 24)}...
-                                  </p>
-                                </div>
-                                <Badge variant="default" className="text-xs gap-1">
-                                  📎 Assigned to: {assignment?.assistant?.name || "Unknown Assistant"}
-                                </Badge>
-                              </div>
-                              
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => 
-                                  assignment && openUnsyncDialog(
-                                    assignment.kb.id, 
-                                    file.vapi_file_id!, 
-                                    file.file_name,
-                                    assignment.assistant?.name || "Unknown Assistant"
-                                  )
-                                }
-                                className="shrink-0 gap-2"
-                              >
-                                <Unlink className="w-4 h-4" />
-                                Unsync
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              )}
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">In Knowledge Base</CardTitle>
+              <BrainCircuit className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{filesInKB.length}</div>
+            </CardContent>
+          </Card>
 
-              {/* Available Files Section */}
-              <Card className="border-border/50">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-primary" />
-                      📄 Available Files ({unassignedFiles.length})
-                    </CardTitle>
-                    {unassignedFiles.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={allUnassignedSelected}
-                          onCheckedChange={toggleSelectAll}
-                          id="select-all"
-                        />
-                        <label 
-                          htmlFor="select-all" 
-                          className="text-sm font-medium cursor-pointer"
-                        >
-                          Select All
-                        </label>
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Available Files</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{availableFiles.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Assistants</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{assistants.length}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Files in Knowledge Base */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BrainCircuit className="w-5 h-5 text-primary" />
+              Files in Knowledge Base
+            </CardTitle>
+            <CardDescription>
+              Files currently in the global knowledge base that your assistant can access
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {filesInKB.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No files in knowledge base yet</p>
+                <p className="text-xs mt-1">Add files from the available files section below</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filesInKB.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileText className="w-5 h-5 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{file.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Added {new Date(file.created_at).toLocaleDateString()}
+                        </p>
                       </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {unassignedFiles.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                      <p>All synced files are assigned to assistants</p>
+                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        In KB
+                      </Badge>
                     </div>
-                  ) : (
-                    <>
-                      {/* Bulk Assignment Controls */}
-                      <Card className="border-border/50 bg-muted/30">
-                        <CardContent className="pt-6 space-y-4">
-                          <div className="flex flex-col sm:flex-row gap-4 items-end">
-                            <div className="flex-1 space-y-2 w-full">
-                              <Label>Select Assistant for Bulk Assignment</Label>
-                              <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Choose an assistant" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {assistants.map((assistant) => (
-                                    <SelectItem key={assistant.id} value={assistant.id}>
-                                      {assistant.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <Button
-                              onClick={assignFilesToAssistant}
-                              disabled={!selectedAssistant || selectedFiles.length === 0 || syncing}
-                              className="gap-2 whitespace-nowrap"
-                            >
-                              {syncing ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Syncing...
-                                </>
-                              ) : (
-                                `Assign Selected Files (${selectedFiles.length})`
-                              )}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openRemoveDialog(file)}
+                      disabled={syncing}
+                      className="ml-3"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Remove from KB
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-                      {/* Files List */}
-                      <div className="space-y-3">
-                        {unassignedFiles.map((file) => (
-                          <Card key={file.id} className="border-border/50">
-                            <CardContent className="pt-4">
-                              <div className="flex items-start gap-3">
-                                <Checkbox
-                                  checked={selectedFiles.includes(file.local_file_id || "")}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      setSelectedFiles([...selectedFiles, file.local_file_id || ""]);
-                                    } else {
-                                      setSelectedFiles(selectedFiles.filter(id => id !== file.local_file_id));
-                                    }
-                                  }}
-                                  className="mt-1"
-                                />
-
-                                <div className="flex-1 min-w-0 space-y-3">
-                                  <div>
-                                    <p className="font-medium truncate">{file.file_name}</p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      Vapi ID: {file.vapi_file_id?.substring(0, 24)}...
-                                    </p>
-                                    <Badge variant="secondary" className="text-xs gap-1 mt-2">
-                                      <CheckCircle2 className="w-3 h-3" />
-                                      🟢 Synced to Vapi
-                                    </Badge>
-                                  </div>
-
-                                  {/* Individual Sync Controls */}
-                                  <div className="flex flex-col sm:flex-row gap-2">
-                                    <Select 
-                                      value={perFileAssistant[file.local_file_id || ""] || ""} 
-                                      onValueChange={(value) => 
-                                        setPerFileAssistant(prev => ({ ...prev, [file.local_file_id || ""]: value }))
-                                      }
-                                    >
-                                      <SelectTrigger className="flex-1">
-                                        <SelectValue placeholder="Select Assistant" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {assistants.map((assistant) => (
-                                          <SelectItem key={assistant.id} value={assistant.id}>
-                                            {assistant.name || "Unnamed Assistant"}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => syncSingleFile(file.local_file_id || "", perFileAssistant[file.local_file_id || ""] || "")}
-                                      disabled={!perFileAssistant[file.local_file_id || ""] || syncing}
-                                      className="whitespace-nowrap gap-2"
-                                    >
-                                      <CheckCircle2 className="w-4 h-4" />
-                                      Sync to Assistant
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+        {/* Available Files */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Available Files
+            </CardTitle>
+            <CardDescription>
+              Files synced to Vapi but not yet added to the knowledge base
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {availableFiles.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">All synced files are in the knowledge base</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{file.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Uploaded {new Date(file.created_at).toLocaleDateString()}
+                        </p>
                       </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+                      <Badge variant="outline" className="border-green-500 text-green-500">
+                        🟢 Synced to Vapi
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => addFileToKB(file.id)}
+                      disabled={syncing}
+                      className="ml-3"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add to KB
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
-            <p className="text-sm text-blue-900 dark:text-blue-100">
-              <strong>How it works:</strong> Select files using checkboxes for bulk assignment, or use the individual "Sync to Assistant" button on each file. 
-              Knowledge bases are created automatically. Use "Unsync" to remove files without deleting them from Vapi.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Assistant Selection */}
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BrainCircuit className="w-5 h-5 text-primary" />
+              Assistant Using Knowledge Base
+            </CardTitle>
+            <CardDescription>
+              Select which assistant should use this knowledge base
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Select value={selectedAssistant} onValueChange={setSelectedAssistant}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select an assistant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {assistants.map((assistant) => (
+                    <SelectItem key={assistant.id} value={assistant.id}>
+                      {assistant.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={attachKBToAssistant}
+                disabled={syncing || !selectedAssistant}
+              >
+                {syncing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Attaching...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Attach KB to Assistant
+                  </>
+                )}
+              </Button>
+            </div>
 
-      {/* Unsync Confirmation Dialog */}
-      <AlertDialog open={unsyncDialogOpen} onOpenChange={setUnsyncDialogOpen}>
+            {currentAssistant && (
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                <p className="text-sm text-foreground">
+                  <span className="font-semibold">Currently attached to:</span>{" "}
+                  {currentAssistant.name}
+                </p>
+              </div>
+            )}
+
+            {assistants.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">No assistants available</p>
+                <p className="text-xs mt-1">Create an assistant in Vapi first</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Instructions */}
+        <Card className="border-border/50 shadow-sm bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
+          <CardHeader>
+            <CardTitle className="text-base text-blue-900 dark:text-blue-100">
+              How to use the Knowledge Base Manager
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+            <p>1. Upload files in the <strong>Database Files</strong> section</p>
+            <p>2. Files are automatically synced to Vapi</p>
+            <p>3. Add files to the knowledge base using the <strong>Add to KB</strong> button</p>
+            <p>4. Select which assistant should use the knowledge base</p>
+            <p>5. The assistant will use all files in the knowledge base for answering questions</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Remove Confirmation Dialog */}
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-warning" />
-              Unsync File from Assistant
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3 pt-2">
-              <p>
-                Are you sure you want to remove this file from the assistant's knowledge base?
-              </p>
-              {fileToUnsync && (
-                <div className="bg-muted/50 p-3 rounded-md space-y-2 text-foreground">
-                  <p><strong>File:</strong> {fileToUnsync.fileName}</p>
-                  <p><strong>Assistant:</strong> {fileToUnsync.assistantName}</p>
-                </div>
-              )}
-              <p className="text-sm">
-                The assistant will no longer have access to this file. The file will remain in Vapi and can be re-assigned later.
-              </p>
+            <AlertDialogTitle>Remove file from Knowledge Base?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{fileToRemove?.file_name}</strong> from the
+              knowledge base? The file will remain in Vapi storage and can be re-added later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmUnsyncFile} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Unsync File
+            <AlertDialogAction onClick={confirmRemoveFile}>
+              Remove from KB
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };
 

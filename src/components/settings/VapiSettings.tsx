@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useVapiConnection } from "@/hooks/useVapiConnection";
 import { CheckCircle2, XCircle, Loader2, Phone } from "lucide-react";
-import KnowledgeBaseManager from "@/components/knowledge-base/KnowledgeBaseManager";
 
 const VapiSettings = () => {
   const { testConnection, testing, isConnected } = useVapiConnection();
@@ -98,8 +97,6 @@ const VapiSettings = () => {
           </div>
         </CardContent>
       </Card>
-
-      <KnowledgeBaseManager />
     </div>
   );
 };
