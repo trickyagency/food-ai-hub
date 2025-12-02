@@ -113,7 +113,6 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           provider: 'canonical',
-          name: knowledgeBaseName,
           fileIds: vapiFileIds,
         }),
       });
