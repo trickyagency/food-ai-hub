@@ -138,30 +138,7 @@ Deno.serve(async (req) => {
         });
     }
 
-    // Update assistant with knowledge base
-    console.log('Updating assistant with knowledge base...');
-    
-    const assistantUpdateResponse = await fetch(`https://api.vapi.ai/assistant/${assistantId}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${VAPI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        knowledgeBase: {
-          provider: 'canonical',
-          knowledgeBaseId: kbId,
-        },
-      }),
-    });
-
-    if (!assistantUpdateResponse.ok) {
-      const errorText = await assistantUpdateResponse.text();
-      console.error('Failed to update assistant:', errorText);
-      throw new Error(`Failed to update assistant: ${assistantUpdateResponse.status}`);
-    }
-
-    console.log('Assistant updated with knowledge base successfully');
+    console.log('Knowledge base is ready and can be used by assistant');
 
     return new Response(
       JSON.stringify({
