@@ -131,10 +131,91 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
   useEffect(() => {
     fetchCalls();
 
+    // Set up real-time subscription for live updates
+    const channel = supabase
+      .channel('vapi-calls-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vapi_calls'
+        },
+        (payload) => {
+          console.log('Real-time call update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newCall = {
+              id: payload.new.id,
+              type: payload.new.type,
+              status: payload.new.status,
+              customer: {
+                number: payload.new.customer_number,
+                name: payload.new.customer_name,
+              },
+              phoneNumberId: payload.new.phone_number_id,
+              phoneNumber: payload.new.phone_number ? { number: payload.new.phone_number } : undefined,
+              assistantId: payload.new.assistant_id,
+              duration: payload.new.duration,
+              cost: payload.new.cost,
+              costs: payload.new.cost_breakdown,
+              endedReason: payload.new.ended_reason,
+              transcript: payload.new.transcript,
+              recordingUrl: payload.new.recording_url,
+              summary: payload.new.summary,
+              messages: payload.new.messages,
+              analysis: payload.new.analysis,
+              startedAt: payload.new.started_at,
+              endedAt: payload.new.ended_at,
+              createdAt: payload.new.created_at,
+              updatedAt: payload.new.updated_at,
+            };
+            setCalls(prev => [newCall, ...prev]);
+            setLastUpdated(new Date());
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedCall = {
+              id: payload.new.id,
+              type: payload.new.type,
+              status: payload.new.status,
+              customer: {
+                number: payload.new.customer_number,
+                name: payload.new.customer_name,
+              },
+              phoneNumberId: payload.new.phone_number_id,
+              phoneNumber: payload.new.phone_number ? { number: payload.new.phone_number } : undefined,
+              assistantId: payload.new.assistant_id,
+              duration: payload.new.duration,
+              cost: payload.new.cost,
+              costs: payload.new.cost_breakdown,
+              endedReason: payload.new.ended_reason,
+              transcript: payload.new.transcript,
+              recordingUrl: payload.new.recording_url,
+              summary: payload.new.summary,
+              messages: payload.new.messages,
+              analysis: payload.new.analysis,
+              startedAt: payload.new.started_at,
+              endedAt: payload.new.ended_at,
+              createdAt: payload.new.created_at,
+              updatedAt: payload.new.updated_at,
+            };
+            setCalls(prev => prev.map(call => call.id === updatedCall.id ? updatedCall : call));
+            setLastUpdated(new Date());
+          }
+        }
+      )
+      .subscribe();
+
     if (autoRefresh) {
       const interval = setInterval(fetchCalls, refreshInterval);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        supabase.removeChannel(channel);
+      };
     }
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [autoRefresh, refreshInterval]);
 
   const refresh = () => {
