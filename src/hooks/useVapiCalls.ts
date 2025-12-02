@@ -47,7 +47,55 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
       setLoading(true);
       setError(null);
 
-      console.log("Fetching calls from Vapi...");
+      console.log("Fetching calls from Supabase cache...");
+
+      // First, try to get from Supabase cache
+      const { data: cachedCalls, error: cacheError } = await supabase
+        .from("vapi_calls")
+        .select("*")
+        .order("started_at", { ascending: false });
+
+      if (!cacheError && cachedCalls && cachedCalls.length > 0) {
+        console.log(`Retrieved ${cachedCalls.length} calls from cache`);
+        const mappedCalls = cachedCalls.map((call: any) => ({
+          id: call.id,
+          type: call.type,
+          status: call.status,
+          customer: {
+            number: call.customer_number,
+            name: call.customer_name,
+          },
+          phoneNumberId: call.phone_number_id,
+          phoneNumber: call.phone_number ? { number: call.phone_number } : undefined,
+          assistantId: call.assistant_id,
+          duration: call.duration,
+          cost: call.cost,
+          costs: call.cost_breakdown,
+          endedReason: call.ended_reason,
+          transcript: call.transcript,
+          recordingUrl: call.recording_url,
+          summary: call.summary,
+          messages: call.messages,
+          analysis: call.analysis,
+          startedAt: call.started_at,
+          endedAt: call.ended_at,
+          createdAt: call.created_at,
+          updatedAt: call.updated_at,
+        }));
+        setCalls(mappedCalls);
+        setLastUpdated(new Date());
+        setLoading(false);
+
+        // Trigger background sync
+        console.log("Triggering background sync...");
+        supabase.functions.invoke("vapi-sync").catch(err => {
+          console.error("Background sync failed:", err);
+        });
+
+        return;
+      }
+
+      console.log("No cached data, fetching from Vapi API...");
 
       const { data, error: functionError } = await supabase.functions.invoke("vapi-proxy", {
         body: { endpoint: "/call?limit=100" },
