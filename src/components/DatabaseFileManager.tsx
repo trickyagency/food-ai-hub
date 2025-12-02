@@ -551,6 +551,46 @@ const DatabaseFileManager = () => {
     if (!confirm(`Are you sure you want to delete ${file.file_name}?`)) return;
 
     try {
+      // 0. Check if file is synced to Vapi and delete from Vapi first
+      const { data: vapiFile } = await supabase
+        .from('vapi_files')
+        .select('*')
+        .eq('local_file_id', file.id)
+        .maybeSingle();
+
+      if (vapiFile) {
+        console.log('File is synced to Vapi, deleting from Vapi first...');
+        toast.info('Removing file from Vapi...');
+
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (!session) {
+            throw new Error('No active session');
+          }
+
+          const { data: vapiDeleteData, error: vapiDeleteError } = await supabase.functions.invoke(
+            'vapi-file-delete',
+            {
+              body: { fileId: file.id },
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            }
+          );
+
+          if (vapiDeleteError) {
+            console.error('Vapi deletion error:', vapiDeleteError);
+            toast.warning('Failed to delete from Vapi, continuing with local deletion...');
+          } else if (vapiDeleteData?.deletedFromVapi) {
+            toast.success('File removed from Vapi');
+          }
+        } catch (vapiError) {
+          console.error('Error deleting from Vapi:', vapiError);
+          toast.warning('Failed to delete from Vapi, continuing with local deletion...');
+        }
+      }
+
       // 1. Delete from Supabase Storage
       const { error: storageError } = await supabase.storage
         .from("database-files")

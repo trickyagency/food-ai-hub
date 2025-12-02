@@ -15,5 +15,8 @@ verify_jwt = true
 [functions.vapi-kb-sync]
 verify_jwt = true
 
+[functions.vapi-file-delete]
+verify_jwt = true
+
 [functions.delete-user]
 verify_jwt = true
