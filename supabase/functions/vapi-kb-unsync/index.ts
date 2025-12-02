@@ -63,38 +63,72 @@ Deno.serve(async (req) => {
     const currentFileIds = kb.file_ids || [];
     const updatedFileIds = currentFileIds.filter((id: string) => id !== vapiFileId);
 
-    console.log('Updating Vapi knowledge base with remaining files:', updatedFileIds);
+    console.log('Recreating Vapi knowledge base with remaining files:', updatedFileIds);
 
-    // Update knowledge base in Vapi
-    const updateResponse = await fetch(`https://api.vapi.ai/knowledge-base/${kb.vapi_kb_id}`, {
-      method: 'PATCH',
+    // Delete old knowledge base from Vapi
+    const deleteResponse = await fetch(`https://api.vapi.ai/knowledge-base/${kb.vapi_kb_id}`, {
+      method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${VAPI_API_KEY}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        fileIds: updatedFileIds,
-      }),
     });
 
-    if (!updateResponse.ok) {
-      const errorText = await updateResponse.text();
-      throw new Error(`Failed to update knowledge base in Vapi: ${updateResponse.status} - ${errorText}`);
+    if (!deleteResponse.ok) {
+      console.warn('Failed to delete old knowledge base, continuing:', deleteResponse.status);
     }
 
-    console.log('Knowledge base updated in Vapi successfully');
+    let newKbId = null;
+
+    // Only create new knowledge base if there are files remaining
+    if (updatedFileIds.length > 0) {
+      const createResponse = await fetch('https://api.vapi.ai/knowledge-base', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${VAPI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'canonical',
+          fileIds: updatedFileIds,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        throw new Error(`Failed to create new knowledge base in Vapi: ${createResponse.status} - ${errorText}`);
+      }
+
+      const kbData = await createResponse.json();
+      newKbId = kbData.id;
+      console.log('New knowledge base created:', newKbId);
+    } else {
+      console.log('No files remaining, knowledge base will be marked as empty');
+    }
 
     // Update in database
-    const { error: updateError } = await supabaseClient
-      .from('vapi_knowledge_bases')
-      .update({
-        file_ids: updatedFileIds,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', knowledgeBaseId);
+    if (updatedFileIds.length > 0) {
+      const { error: updateError } = await supabaseClient
+        .from('vapi_knowledge_bases')
+        .update({
+          vapi_kb_id: newKbId,
+          file_ids: updatedFileIds,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', knowledgeBaseId);
 
-    if (updateError) {
-      throw new Error(`Failed to update knowledge base in database: ${updateError.message}`);
+      if (updateError) {
+        throw new Error(`Failed to update knowledge base in database: ${updateError.message}`);
+      }
+    } else {
+      // Delete knowledge base from database if no files remain
+      const { error: deleteError } = await supabaseClient
+        .from('vapi_knowledge_bases')
+        .delete()
+        .eq('id', knowledgeBaseId);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete empty knowledge base from database: ${deleteError.message}`);
+      }
     }
 
     console.log('File unsynced from knowledge base successfully');
@@ -102,7 +136,9 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'File removed from knowledge base',
+        message: updatedFileIds.length > 0 
+          ? 'File removed from knowledge base' 
+          : 'Knowledge base deleted (no files remaining)',
         remainingFiles: updatedFileIds.length,
       }),
       {
