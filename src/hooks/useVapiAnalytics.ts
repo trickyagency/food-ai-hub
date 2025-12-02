@@ -64,9 +64,18 @@ export const useVapiAnalytics = (options: UseVapiAnalyticsOptions = {}) => {
       return;
     }
 
+    console.log("Calculating analytics from calls:", calls.length);
+    
     // Calculate analytics from calls data
     const totalCalls = calls.length;
-    const totalMinutes = calls.reduce((sum, call) => sum + (call.duration || 0) / 60, 0);
+    const totalMinutes = calls.reduce((sum, call) => {
+      const minutes = (call.duration || 0) / 60;
+      console.log(`Call ${call.id}: duration=${call.duration}s, minutes=${minutes}`);
+      return sum + minutes;
+    }, 0);
+    
+    console.log(`Total minutes calculated: ${totalMinutes}`);
+    
     const totalCost = calls.reduce((sum, call) => sum + (call.cost || 0), 0);
 
     // Calculate success rate
