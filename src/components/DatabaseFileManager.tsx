@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2, Download, Edit2, Eye, Wifi, WifiOff } from "lucide-react";
+import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2, Download, Edit2, Eye, Wifi, WifiOff, Cloud, CloudOff, History, CheckSquare, Square } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { z } from "zod";
 import { auditLog } from "@/lib/auditLog";
@@ -54,9 +56,22 @@ interface FileRecord {
   user_id: string;
 }
 
+interface VapiFileSync {
+  id: string;
+  local_file_id: string;
+  file_name: string;
+  vapi_file_id: string | null;
+  status: string;
+  error_message: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 const DatabaseFileManager = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [storedFiles, setStoredFiles] = useState<FileRecord[]>([]);
+  const [vapiSyncData, setVapiSyncData] = useState<Record<string, VapiFileSync>>({});
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [webhookStatus, setWebhookStatus] = useState<"unknown" | "testing" | "connected" | "failed">("unknown");
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; file: FileRecord | null }>({ open: false, file: null });
@@ -65,6 +80,11 @@ const DatabaseFileManager = () => {
     open: false, 
     file: null, 
     content: "" 
+  });
+  const [syncHistoryDialog, setSyncHistoryDialog] = useState<{ open: boolean; file: FileRecord | null; history: VapiFileSync | null }>({
+    open: false,
+    file: null,
+    history: null
   });
 
   useEffect(() => {
@@ -80,11 +100,36 @@ const DatabaseFileManager = () => {
 
       if (error) throw error;
       setStoredFiles(data || []);
+      
+      // Fetch Vapi sync status for all files
+      await fetchVapiSyncStatus();
     } catch (error) {
       console.error("Error fetching files:", error);
       toast.error("Failed to load files");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchVapiSyncStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("vapi_files")
+        .select("*");
+
+      if (error) throw error;
+      
+      // Create a map of local_file_id to vapi_files data
+      const syncMap: Record<string, VapiFileSync> = {};
+      data?.forEach((item: any) => {
+        if (item.local_file_id) {
+          syncMap[item.local_file_id] = item;
+        }
+      });
+      
+      setVapiSyncData(syncMap);
+    } catch (error) {
+      console.error("Error fetching Vapi sync status:", error);
     }
   };
 
@@ -668,6 +713,151 @@ const DatabaseFileManager = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedFiles.size === 0) {
+      toast.error("No files selected. Please select files to delete");
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedFiles.size} file(s)? This will remove them from both Supabase and Vapi (if synced).`;
+    if (!confirm(confirmMessage)) return;
+
+    const filesToDelete = storedFiles.filter(f => selectedFiles.has(f.id));
+    let successCount = 0;
+    let failCount = 0;
+
+    toast.info(`Deleting ${filesToDelete.length} file(s)...`);
+
+    for (const file of filesToDelete) {
+      try {
+        // Check if file is synced to Vapi and delete from Vapi first
+        const vapiFile = vapiSyncData[file.id];
+
+        if (vapiFile) {
+          console.log('File is synced to Vapi, deleting from Vapi first...');
+
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            if (session) {
+              await supabase.functions.invoke(
+                'vapi-file-delete',
+                {
+                  body: { fileId: file.id },
+                  headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                  },
+                }
+              );
+            }
+          } catch (vapiError) {
+            console.error('Error deleting from Vapi:', vapiError);
+          }
+        }
+
+        // Delete from Supabase Storage
+        const { error: storageError } = await supabase.storage
+          .from("database-files")
+          .remove([file.storage_path]);
+
+        if (storageError) throw storageError;
+
+        // Delete from Supabase database
+        const { error: dbError } = await supabase
+          .from("files")
+          .delete()
+          .eq("id", file.id);
+
+        if (dbError) throw dbError;
+
+        // Get user data for webhook notification
+        const { data: { user } } = await supabase.auth.getUser();
+        let userRole = null;
+        
+        if (user) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+            .single();
+          
+          userRole = roleData?.role;
+        }
+
+        // Send delete notification to n8n webhook
+        try {
+          await fetch(DELETE_WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileId: file.id,
+              fileName: file.file_name,
+              storagePath: file.storage_path,
+              bucketName: 'database-files',
+              fileSize: file.size,
+              mimeType: file.mime_type,
+              createdAt: file.created_at,
+              updatedAt: file.updated_at,
+              userId: user?.id,
+              userEmail: user?.email || '',
+              userRole: userRole,
+            }),
+          });
+        } catch (webhookError) {
+          console.warn("Webhook notification failed:", webhookError);
+        }
+
+        // Create audit log
+        await auditLog.fileDeleted(file.file_name || "Unnamed file", file.id);
+
+        successCount++;
+      } catch (error) {
+        console.error(`Error deleting file ${file.file_name}:`, error);
+        failCount++;
+      }
+    }
+
+    // Update local state
+    setStoredFiles(storedFiles.filter(f => !selectedFiles.has(f.id)));
+    setSelectedFiles(new Set());
+
+    if (failCount > 0) {
+      toast.error(`Bulk deletion completed. Successfully deleted ${successCount} file(s). Failed: ${failCount}`);
+    } else {
+      toast.success(`Bulk deletion completed. Successfully deleted ${successCount} file(s).`);
+    }
+
+    // Refresh data
+    await fetchStoredFiles();
+  };
+
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId);
+      } else {
+        newSet.add(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedFiles.size === storedFiles.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(storedFiles.map(f => f.id)));
+    }
+  };
+
+  const openSyncHistory = (file: FileRecord) => {
+    const syncHistory = vapiSyncData[file.id] || null;
+    setSyncHistoryDialog({ open: true, file, history: syncHistory });
+  };
+
   const openRenameDialog = (file: FileRecord) => {
     setRenameDialog({ open: true, file });
     setNewFileName(file.file_name || "");
@@ -876,13 +1066,45 @@ const DatabaseFileManager = () => {
       {/* File Management Section */}
       <Card className="bg-gradient-card border-border/50 shadow-elegant">
         <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            Manage Database Files
-          </CardTitle>
-          <CardDescription>
-            View, download, rename, preview, and delete uploaded database files
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Manage Database Files
+              </CardTitle>
+              <CardDescription>
+                View, download, rename, preview, and delete uploaded database files
+              </CardDescription>
+            </div>
+            {storedFiles.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={toggleSelectAll}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  {selectedFiles.size === storedFiles.length ? (
+                    <CheckSquare className="w-4 h-4" />
+                  ) : (
+                    <Square className="w-4 h-4" />
+                  )}
+                  {selectedFiles.size === storedFiles.length ? 'Deselect All' : 'Select All'}
+                </Button>
+                {selectedFiles.size > 0 && (
+                  <Button
+                    onClick={handleBulkDelete}
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete {selectedFiles.size} file(s)
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -897,65 +1119,108 @@ const DatabaseFileManager = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              {storedFiles.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-3 p-4 rounded-lg bg-card border border-border hover:border-primary/30 transition-all duration-200"
-                >
-                  <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {file.file_name || "Unnamed file"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(file.size)} • {formatDate(file.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <FileSyncButton
-                      fileId={file.id}
-                      fileName={file.file_name || "Unnamed file"}
-                      onSyncComplete={fetchStoredFiles}
+              {storedFiles.map((file) => {
+                const vapiSync = vapiSyncData[file.id];
+                const isSynced = vapiSync && vapiSync.status === 'synced' && vapiSync.vapi_file_id;
+                const hasSyncError = vapiSync && vapiSync.status === 'error';
+                
+                return (
+                  <div
+                    key={file.id}
+                    className={`flex items-center gap-3 p-4 rounded-lg bg-card border transition-all duration-200 ${
+                      selectedFiles.has(file.id) 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={selectedFiles.has(file.id)}
+                      onCheckedChange={() => toggleFileSelection(file.id)}
+                      className="flex-shrink-0"
                     />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handlePreview(file)}
-                      className="hover:bg-primary/10 hover:text-primary"
-                      title="Preview file"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => openRenameDialog(file)}
-                      className="hover:bg-primary/10 hover:text-primary"
-                      title="Rename file"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDownload(file)}
-                      className="hover:bg-primary/10 hover:text-primary"
-                      title="Download file"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(file)}
-                      className="hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete file"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {file.file_name || "Unnamed file"}
+                        </p>
+                        {isSynced && (
+                          <Badge variant="secondary" className="gap-1 text-xs bg-success/10 text-success border-success/20">
+                            <Cloud className="w-3 h-3" />
+                            Synced to Vapi
+                          </Badge>
+                        )}
+                        {hasSyncError && (
+                          <Badge variant="destructive" className="gap-1 text-xs">
+                            <CloudOff className="w-3 h-3" />
+                            Sync Error
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)} • {formatDate(file.created_at)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {vapiSync && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openSyncHistory(file)}
+                          className="hover:bg-primary/10 hover:text-primary"
+                          title="View sync history"
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <FileSyncButton
+                        fileId={file.id}
+                        fileName={file.file_name || "Unnamed file"}
+                        onSyncComplete={() => {
+                          fetchStoredFiles();
+                          fetchVapiSyncStatus();
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handlePreview(file)}
+                        className="hover:bg-primary/10 hover:text-primary"
+                        title="Preview file"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => openRenameDialog(file)}
+                        className="hover:bg-primary/10 hover:text-primary"
+                        title="Rename file"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDownload(file)}
+                        className="hover:bg-primary/10 hover:text-primary"
+                        title="Download file"
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDelete(file)}
+                        className="hover:bg-destructive/10 hover:text-destructive"
+                        title="Delete file"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -1009,6 +1274,119 @@ const DatabaseFileManager = () => {
             <pre className="text-sm text-foreground whitespace-pre-wrap bg-muted p-4 rounded-lg">
               {previewDialog.content}
             </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sync History Dialog */}
+      <Dialog open={syncHistoryDialog.open} onOpenChange={(open) => setSyncHistoryDialog({ open, file: null, history: null })}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-primary" />
+              Vapi Sync History: {syncHistoryDialog.file?.file_name}
+            </DialogTitle>
+            <DialogDescription>
+              View the synchronization history and status for this file
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {!syncHistoryDialog.history ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CloudOff className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">Not synced to Vapi</p>
+                <p className="text-sm mt-2">This file has not been uploaded to Vapi yet.</p>
+                <p className="text-sm mt-1">Click the sync button to upload it.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Status Badge */}
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-muted">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground mb-1">Current Status</p>
+                    {syncHistoryDialog.history.status === 'synced' && syncHistoryDialog.history.vapi_file_id ? (
+                      <Badge variant="secondary" className="gap-1 bg-success/10 text-success border-success/20">
+                        <Cloud className="w-3 h-3" />
+                        Synced Successfully
+                      </Badge>
+                    ) : syncHistoryDialog.history.status === 'error' ? (
+                      <Badge variant="destructive" className="gap-1">
+                        <CloudOff className="w-3 h-3" />
+                        Sync Failed
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {syncHistoryDialog.history.status}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sync Details */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Vapi File ID</p>
+                      <p className="text-sm font-mono text-foreground">
+                        {syncHistoryDialog.history.vapi_file_id || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Local File ID</p>
+                      <p className="text-sm font-mono text-foreground">
+                        {syncHistoryDialog.history.local_file_id?.slice(0, 8)}...
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Synced At</p>
+                      <p className="text-sm text-foreground">
+                        {formatDate(syncHistoryDialog.history.created_at)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Last Updated</p>
+                      <p className="text-sm text-foreground">
+                        {formatDate(syncHistoryDialog.history.updated_at)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {syncHistoryDialog.history.error_message && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Error Message</p>
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                        <p className="text-sm text-destructive">
+                          {syncHistoryDialog.history.error_message}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {syncHistoryDialog.history.vapi_file_id && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Vapi URL</p>
+                      <p className="text-sm font-mono text-primary break-all">
+                        https://api.vapi.ai/file/{syncHistoryDialog.history.vapi_file_id}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSyncHistoryDialog({ open: false, file: null, history: null })}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
