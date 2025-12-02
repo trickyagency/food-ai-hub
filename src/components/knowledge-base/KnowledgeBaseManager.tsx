@@ -54,12 +54,12 @@ const KnowledgeBaseManager = () => {
       setLoading(true);
 
       // Fetch all vapi files that are synced
-      const { data: vapiFiles, error: filesError } = await supabase
-        .from("vapi_files")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "synced")
-        .order("created_at", { ascending: false });
+    const { data: vapiFiles, error: filesError } = await supabase
+      .from("vapi_files")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "done")
+      .order("created_at", { ascending: false });
 
       if (filesError) throw filesError;
       setFiles(vapiFiles || []);
