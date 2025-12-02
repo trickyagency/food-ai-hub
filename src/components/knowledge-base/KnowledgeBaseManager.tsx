@@ -30,7 +30,6 @@ interface KnowledgeBase {
 
 // Hardcoded Riley assistant
 const RILEY_ASSISTANT_ID = "d9f41449-6376-40fe-b7e7-9d51f87be464";
-const RILEY_ASSISTANT_NAME = "Riley";
 
 const KnowledgeBaseManager = () => {
   const { toast } = useToast();
@@ -38,6 +37,7 @@ const KnowledgeBaseManager = () => {
   
   const [files, setFiles] = useState<VapiFile[]>([]);
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
+  const [assistantName, setAssistantName] = useState<string>("Riley");
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
@@ -70,6 +70,23 @@ const KnowledgeBaseManager = () => {
       
       if (kbError) throw kbError;
       setKnowledgeBase(kbData);
+
+      // Fetch Riley assistant details from Vapi
+      try {
+        const { data: assistantData, error: assistantError } = await supabase.functions.invoke("vapi-proxy", {
+          body: {
+            endpoint: `/assistant/${RILEY_ASSISTANT_ID}`,
+            method: "GET",
+          },
+        });
+
+        if (!assistantError && assistantData?.name) {
+          setAssistantName(assistantData.name);
+        }
+      } catch (error) {
+        console.error("Error fetching assistant details:", error);
+        // Keep default name if fetch fails
+      }
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
@@ -110,7 +127,7 @@ const KnowledgeBaseManager = () => {
 
       toast({
         title: "Success",
-        description: `File added to ${RILEY_ASSISTANT_NAME}'s knowledge base successfully`,
+        description: `File added to ${assistantName}'s knowledge base successfully`,
       });
 
       await fetchData();
@@ -218,7 +235,7 @@ const KnowledgeBaseManager = () => {
               <BrainCircuit className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{RILEY_ASSISTANT_NAME}</div>
+              <div className="text-2xl font-bold">{assistantName}</div>
             </CardContent>
           </Card>
         </div>
@@ -345,7 +362,7 @@ const KnowledgeBaseManager = () => {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg bg-muted/30">
               <div className="space-y-1">
-                <p className="font-medium">{RILEY_ASSISTANT_NAME}</p>
+                <p className="font-medium">{assistantName}</p>
                 <p className="text-sm text-muted-foreground font-mono">{RILEY_ASSISTANT_ID}</p>
               </div>
               <Badge variant="default" className="bg-primary">
