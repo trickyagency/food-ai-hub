@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { z } from "zod";
 import { auditLog } from "@/lib/auditLog";
+import FileSyncButton from "@/components/knowledge-base/FileSyncButton";
 
 const WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook/2e1e8c7c-8d78-4203-bafd-4a1482234078";
 const DELETE_WEBHOOK_URL = "https://n8n.quadrilabs.com/webhook/faf85808-43a9-4b09-86f2-b316b09a473c";
@@ -871,6 +872,11 @@ const DatabaseFileManager = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <FileSyncButton
+                      fileId={file.id}
+                      fileName={file.file_name || "Unnamed file"}
+                      onSyncComplete={fetchStoredFiles}
+                    />
                     <Button
                       size="sm"
                       variant="ghost"

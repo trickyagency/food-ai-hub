@@ -389,6 +389,167 @@ export type Database = {
         }
         Relationships: []
       }
+      vapi_calls: {
+        Row: {
+          analysis: Json | null
+          assistant_id: string | null
+          cost: number | null
+          cost_breakdown: Json | null
+          created_at: string | null
+          customer_name: string | null
+          customer_number: string | null
+          duration: number | null
+          ended_at: string | null
+          ended_reason: string | null
+          id: string
+          messages: Json | null
+          phone_number: string | null
+          phone_number_id: string | null
+          recording_url: string | null
+          started_at: string | null
+          status: string | null
+          summary: string | null
+          synced_at: string | null
+          transcript: string | null
+          type: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          analysis?: Json | null
+          assistant_id?: string | null
+          cost?: number | null
+          cost_breakdown?: Json | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_number?: string | null
+          duration?: number | null
+          ended_at?: string | null
+          ended_reason?: string | null
+          id: string
+          messages?: Json | null
+          phone_number?: string | null
+          phone_number_id?: string | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          synced_at?: string | null
+          transcript?: string | null
+          type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          analysis?: Json | null
+          assistant_id?: string | null
+          cost?: number | null
+          cost_breakdown?: Json | null
+          created_at?: string | null
+          customer_name?: string | null
+          customer_number?: string | null
+          duration?: number | null
+          ended_at?: string | null
+          ended_reason?: string | null
+          id?: string
+          messages?: Json | null
+          phone_number?: string | null
+          phone_number_id?: string | null
+          recording_url?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          synced_at?: string | null
+          transcript?: string | null
+          type?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      vapi_files: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          file_name: string
+          id: string
+          local_file_id: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+          vapi_file_id: string | null
+          vapi_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          file_name: string
+          id?: string
+          local_file_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          vapi_file_id?: string | null
+          vapi_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          file_name?: string
+          id?: string
+          local_file_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          vapi_file_id?: string | null
+          vapi_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vapi_files_local_file_id_fkey"
+            columns: ["local_file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vapi_knowledge_bases: {
+        Row: {
+          assistant_id: string | null
+          created_at: string | null
+          file_ids: string[] | null
+          id: string
+          name: string
+          status: string
+          updated_at: string | null
+          user_id: string
+          vapi_kb_id: string | null
+        }
+        Insert: {
+          assistant_id?: string | null
+          created_at?: string | null
+          file_ids?: string[] | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          vapi_kb_id?: string | null
+        }
+        Update: {
+          assistant_id?: string | null
+          created_at?: string | null
+          file_ids?: string[] | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          vapi_kb_id?: string | null
+        }
+        Relationships: []
+      }
       vapi_phone_numbers_cache: {
         Row: {
           assistant_id: string | null

@@ -21,7 +21,29 @@ export const useVapiAssistants = (autoFetch = true) => {
       setLoading(true);
       setError(null);
 
-      console.log("Fetching assistants from Vapi...");
+      console.log("Fetching assistants from Supabase cache...");
+
+      // First, try to get from Supabase cache
+      const { data: cachedAssistants, error: cacheError } = await supabase
+        .from("vapi_assistants_cache")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!cacheError && cachedAssistants && cachedAssistants.length > 0) {
+        console.log(`Retrieved ${cachedAssistants.length} assistants from cache`);
+        setAssistants(cachedAssistants);
+        setLoading(false);
+
+        // Trigger background sync
+        console.log("Triggering background sync...");
+        supabase.functions.invoke("vapi-sync").catch(err => {
+          console.error("Background sync failed:", err);
+        });
+
+        return;
+      }
+
+      console.log("No cached data, fetching from Vapi API...");
 
       const { data, error: functionError } = await supabase.functions.invoke("vapi-proxy", {
         body: { endpoint: "/assistant", method: "GET" },

@@ -20,7 +20,29 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
       setLoading(true);
       setError(null);
 
-      console.log("Fetching phone numbers from Vapi...");
+      console.log("Fetching phone numbers from Supabase cache...");
+
+      // First, try to get from Supabase cache
+      const { data: cachedPhoneNumbers, error: cacheError } = await supabase
+        .from("vapi_phone_numbers_cache")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!cacheError && cachedPhoneNumbers && cachedPhoneNumbers.length > 0) {
+        console.log(`Retrieved ${cachedPhoneNumbers.length} phone numbers from cache`);
+        setPhoneNumbers(cachedPhoneNumbers);
+        setLoading(false);
+
+        // Trigger background sync
+        console.log("Triggering background sync...");
+        supabase.functions.invoke("vapi-sync").catch(err => {
+          console.error("Background sync failed:", err);
+        });
+
+        return;
+      }
+
+      console.log("No cached data, fetching from Vapi API...");
 
       const { data, error: functionError } = await supabase.functions.invoke("vapi-proxy", {
         body: { endpoint: "/phone-number", method: "GET" },
