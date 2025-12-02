@@ -117,7 +117,6 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           provider: "canonical",
-          name: "Global Knowledge Base",
           fileIds: vapiFileIds,
         }),
       });
