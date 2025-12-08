@@ -6,17 +6,49 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price?: number;
+  modifications?: string;
+}
+
 interface SMSRequest {
   customerNumber: string;
   orderDetails: {
-    items?: string[];
+    items?: OrderItem[] | string[];
+    subtotal?: number;
+    tax?: number;
     total?: number;
     estimatedTime?: number;
     customerName?: string;
     orderId?: string;
+    specialInstructions?: string;
   };
   callId?: string;
   userId?: string;
+}
+
+// Format order items for SMS display
+function formatOrderItems(items: OrderItem[] | string[] | undefined): string {
+  if (!items || items.length === 0) {
+    return "Your order items";
+  }
+
+  return items.map(item => {
+    if (typeof item === "string") {
+      return `• ${item}`;
+    }
+    
+    let line = `• ${item.quantity}x ${item.name}`;
+    if (item.price) {
+      line += ` - $${(item.price * item.quantity).toFixed(2)}`;
+    }
+    if (item.modifications) {
+      line += `\n  (${item.modifications})`;
+    }
+    return line;
+  }).join("\n");
 }
 
 serve(async (req) => {
@@ -47,24 +79,40 @@ serve(async (req) => {
       throw new Error("Customer phone number is required");
     }
 
-    // Format the order confirmation message
+    // Format the order confirmation message with enhanced details
     const customerName = orderDetails.customerName || "Valued Customer";
-    const items = orderDetails.items?.join("\n• ") || "Your order items";
-    const total = orderDetails.total ? `$${orderDetails.total.toFixed(2)}` : "See receipt";
+    const formattedItems = formatOrderItems(orderDetails.items);
     const estimatedTime = orderDetails.estimatedTime || 30;
     const orderId = orderDetails.orderId || `ORD-${Date.now().toString(36).toUpperCase()}`;
+
+    // Build pricing section
+    let pricingSection = "";
+    if (orderDetails.subtotal && orderDetails.tax) {
+      pricingSection = `Subtotal: $${orderDetails.subtotal.toFixed(2)}
+Tax: $${orderDetails.tax.toFixed(2)}
+Total: $${orderDetails.total?.toFixed(2) || "See receipt"}`;
+    } else if (orderDetails.total) {
+      pricingSection = `Total: $${orderDetails.total.toFixed(2)}`;
+    } else {
+      pricingSection = "Total: See receipt";
+    }
+
+    // Build special instructions section
+    const instructionsSection = orderDetails.specialInstructions 
+      ? `\nNote: ${orderDetails.specialInstructions}` 
+      : "";
 
     const messageBody = `🍕 Order Confirmed!
 
 Hi ${customerName},
 
-Your order #${orderId} has been received:
-• ${items}
+Order #${orderId}:
+${formattedItems}
 
-Total: ${total}
-Est. Time: ${estimatedTime} mins
+${pricingSection}
+Est. Ready: ${estimatedTime} mins${instructionsSection}
 
-Thank you for ordering with us!
+Thank you for ordering!
 - Smartflow Restaurant`;
 
     // Create SMS log entry first (pending status)
