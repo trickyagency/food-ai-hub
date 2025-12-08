@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink, DollarSign, Phone, Bot, Clock } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
 import { getDurationBreakdown } from "@/lib/utils";
@@ -43,12 +44,21 @@ export const AccountOverviewWidget = ({ analytics }: AccountOverviewWidgetProps)
               <Clock className="w-4 h-4" />
               Total Duration
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold">{duration.hours}</span>
-              <span className="text-xs text-muted-foreground">h</span>
-              <span className="text-2xl font-bold ml-1">{duration.minutes}</span>
-              <span className="text-xs text-muted-foreground">m</span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-baseline gap-1 cursor-help">
+                    <span className="text-2xl font-bold">{duration.hours}</span>
+                    <span className="text-xs text-muted-foreground">h</span>
+                    <span className="text-2xl font-bold ml-1">{duration.minutes}</span>
+                    <span className="text-xs text-muted-foreground">m</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{duration.hours}h {duration.minutes}m {duration.seconds}s</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           
           <div className="space-y-1">

@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Phone, Clock, DollarSign, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
 import { getDurationBreakdown } from "@/lib/utils";
@@ -74,12 +75,21 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Total Duration</p>
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-foreground">{duration.hours}</span>
-              <span className="text-xs text-muted-foreground mr-2">hrs</span>
-              <span className="text-2xl font-bold text-foreground">{duration.minutes}</span>
-              <span className="text-xs text-muted-foreground">min</span>
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-baseline gap-1 cursor-help">
+                    <span className="text-2xl font-bold text-foreground">{duration.hours}</span>
+                    <span className="text-xs text-muted-foreground mr-2">hrs</span>
+                    <span className="text-2xl font-bold text-foreground">{duration.minutes}</span>
+                    <span className="text-xs text-muted-foreground">min</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{duration.hours}h {duration.minutes}m {duration.seconds}s</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </CardContent>
       </Card>
