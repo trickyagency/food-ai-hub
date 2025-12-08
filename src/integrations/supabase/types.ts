@@ -221,6 +221,57 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          call_id: string
+          created_at: string | null
+          customer_name: string | null
+          customer_number: string
+          estimated_time: number | null
+          id: string
+          items: Json
+          special_instructions: string | null
+          status: string | null
+          subtotal: number | null
+          tax: number | null
+          total: number
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          call_id: string
+          created_at?: string | null
+          customer_name?: string | null
+          customer_number: string
+          estimated_time?: number | null
+          id?: string
+          items?: Json
+          special_instructions?: string | null
+          status?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          total: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          call_id?: string
+          created_at?: string | null
+          customer_name?: string | null
+          customer_number?: string
+          estimated_time?: number | null
+          id?: string
+          items?: Json
+          special_instructions?: string | null
+          status?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
