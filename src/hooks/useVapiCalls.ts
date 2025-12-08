@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export interface CostBreakdown {
+  transport: number;
+  stt: number;
+  llm: number;
+  tts: number;
+  vapi: number;
+  total: number;
+}
+
 export interface VapiCall {
   id: string;
   type: "inboundPhoneCall" | "outboundPhoneCall" | "webCall";
@@ -14,14 +23,7 @@ export interface VapiCall {
   };
   duration?: number;
   cost?: number;
-  costBreakdown?: {
-    transport?: number;
-    stt?: number;
-    llm?: number;
-    tts?: number;
-    vapi?: number;
-    total?: number;
-  };
+  costBreakdown?: CostBreakdown;
   endedReason?: string;
   createdAt: string;
   updatedAt: string;
@@ -29,6 +31,47 @@ export interface VapiCall {
   recordingUrl?: string;
   summary?: string;
 }
+
+// Helper function to transform Vapi costs array to object format
+const transformCostsArray = (costs: any): CostBreakdown | undefined => {
+  const breakdown: CostBreakdown = { stt: 0, llm: 0, tts: 0, vapi: 0, transport: 0, total: 0 };
+  
+  // Handle array format from Vapi API
+  if (Array.isArray(costs)) {
+    costs.forEach((cost: any) => {
+      const type = (cost.type || '').toLowerCase();
+      const costValue = Number(cost.cost) || 0;
+      
+      if (type.includes('stt') || type.includes('transcriber')) {
+        breakdown.stt += costValue;
+      } else if (type.includes('llm') || type.includes('model')) {
+        breakdown.llm += costValue;
+      } else if (type.includes('tts') || type.includes('voice')) {
+        breakdown.tts += costValue;
+      } else if (type.includes('vapi')) {
+        breakdown.vapi += costValue;
+      } else if (type.includes('transport')) {
+        breakdown.transport += costValue;
+      }
+      breakdown.total += costValue;
+    });
+    return breakdown;
+  }
+  
+  // Handle object format (already in correct format or from cache)
+  if (costs && typeof costs === 'object') {
+    return {
+      stt: Number(costs.stt) || 0,
+      llm: Number(costs.llm) || 0,
+      tts: Number(costs.tts) || 0,
+      vapi: Number(costs.vapi) || 0,
+      transport: Number(costs.transport) || 0,
+      total: Number(costs.total) || 0,
+    };
+  }
+  
+  return undefined;
+};
 
 interface UseVapiCallsOptions {
   autoRefresh?: boolean;
@@ -70,7 +113,7 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
           assistantId: call.assistant_id,
           duration: call.duration,
           cost: call.cost,
-          costBreakdown: call.cost_breakdown,
+          costBreakdown: transformCostsArray(call.cost_breakdown),
           endedReason: call.ended_reason,
           transcript: call.transcript,
           recordingUrl: call.recording_url,
@@ -134,7 +177,7 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
         phoneNumber: call.phoneNumber,
         duration: call.duration ?? calculateDuration(call.startedAt, call.endedAt),
         cost: call.cost,
-        costBreakdown: call.costs,
+        costBreakdown: transformCostsArray(call.costs),
         endedReason: call.endedReason,
         createdAt: call.createdAt,
         updatedAt: call.updatedAt,
@@ -186,7 +229,7 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
               assistantId: payload.new.assistant_id,
               duration: payload.new.duration,
               cost: payload.new.cost,
-              costBreakdown: payload.new.cost_breakdown,
+              costBreakdown: transformCostsArray(payload.new.cost_breakdown),
               endedReason: payload.new.ended_reason,
               transcript: payload.new.transcript,
               recordingUrl: payload.new.recording_url,
@@ -214,7 +257,7 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
               assistantId: payload.new.assistant_id,
               duration: payload.new.duration,
               cost: payload.new.cost,
-              costBreakdown: payload.new.cost_breakdown,
+              costBreakdown: transformCostsArray(payload.new.cost_breakdown),
               endedReason: payload.new.ended_reason,
               transcript: payload.new.transcript,
               recordingUrl: payload.new.recording_url,
