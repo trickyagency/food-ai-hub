@@ -18,6 +18,7 @@ import DetailedAnalytics from "@/components/dashboard/DetailedAnalytics";
 import { MakeCallDialog } from "@/components/dashboard/MakeCallDialog";
 import { AssistantsWidget } from "@/components/dashboard/AssistantsWidget";
 import { AccountOverviewWidget } from "@/components/dashboard/AccountOverviewWidget";
+import { TodayOrdersWidget } from "@/components/dashboard/widgets/TodayOrdersWidget";
 import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicator";
 import { ExportAnalytics } from "@/components/dashboard/ExportAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -166,6 +167,9 @@ const Index = () => {
                     <TabsContent value="overview" className="space-y-6 sm:space-y-8">
                       {/* Metrics Grid */}
                       <VapiMetricsGrid analytics={analytics} loading={false} />
+
+                      {/* Today's Orders Widget */}
+                      <TodayOrdersWidget />
 
                       {/* Cost Breakdown */}
                       <CostBreakdownWidget analytics={analytics} />
