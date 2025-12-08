@@ -48,8 +48,6 @@ export const AccountOverviewWidget = ({ analytics }: AccountOverviewWidgetProps)
               <span className="text-xs text-muted-foreground">h</span>
               <span className="text-2xl font-bold ml-1">{duration.minutes}</span>
               <span className="text-xs text-muted-foreground">m</span>
-              <span className="text-2xl font-bold ml-1">{duration.seconds}</span>
-              <span className="text-xs text-muted-foreground">s</span>
             </div>
           </div>
           

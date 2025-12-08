@@ -78,9 +78,7 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
               <span className="text-2xl font-bold text-foreground">{duration.hours}</span>
               <span className="text-xs text-muted-foreground mr-2">hrs</span>
               <span className="text-2xl font-bold text-foreground">{duration.minutes}</span>
-              <span className="text-xs text-muted-foreground mr-2">min</span>
-              <span className="text-2xl font-bold text-foreground">{duration.seconds}</span>
-              <span className="text-xs text-muted-foreground">sec</span>
+              <span className="text-xs text-muted-foreground">min</span>
             </div>
           </div>
         </CardContent>
