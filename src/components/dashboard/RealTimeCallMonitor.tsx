@@ -110,7 +110,7 @@ const RealTimeCallMonitor = ({ calls, onRefresh }: RealTimeCallMonitorProps) => 
 
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">
-                      {call.customer?.number || call.phoneNumber?.number || "Unknown"}
+                      {call.customer?.number || "Unknown"}
                     </p>
                     {call.customer?.name && (
                       <p className="text-xs text-muted-foreground">{call.customer.name}</p>

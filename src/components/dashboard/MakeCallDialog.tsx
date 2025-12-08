@@ -10,7 +10,6 @@ import { Phone, Loader2, Check, ChevronsUpDown, Star, Clock } from "lucide-react
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
-import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 
@@ -125,7 +124,6 @@ export const MakeCallDialog = () => {
   const [localNumber, setLocalNumber] = useState("");
   const [formattedNumber, setFormattedNumber] = useState("");
   const [selectedAssistant, setSelectedAssistant] = useState("");
-  const [selectedPhoneNumber, setSelectedPhoneNumber] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
@@ -133,7 +131,6 @@ export const MakeCallDialog = () => {
   const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
 
   const { assistants, loading: assistantsLoading } = useVapiAssistants();
-  const { phoneNumbers, loading: phoneNumbersLoading } = useVapiPhoneNumbers();
 
   // Load recent and favorite countries on mount
   useEffect(() => {
@@ -201,14 +198,13 @@ export const MakeCallDialog = () => {
     setIsLoading(true);
     try {
       const fullPhoneNumber = getFullPhoneNumber();
-      console.log("Initiating outbound call...", { phoneNumber: fullPhoneNumber, selectedAssistant, selectedPhoneNumber });
+      console.log("Initiating outbound call...", { phoneNumber: fullPhoneNumber, selectedAssistant });
 
       const { data, error } = await supabase.functions.invoke("vapi-proxy", {
         body: {
           endpoint: "/call",
           method: "POST",
           assistantId: selectedAssistant,
-          ...(selectedPhoneNumber && selectedPhoneNumber !== "default" && { phoneNumberId: selectedPhoneNumber }),
           customer: {
             number: fullPhoneNumber,
           },
@@ -234,7 +230,6 @@ export const MakeCallDialog = () => {
       setFormattedNumber("");
       setCountryCode(countryCodes[0]);
       setSelectedAssistant("");
-      setSelectedPhoneNumber("");
     } catch (err) {
       console.error("Error initiating call:", err);
       toast.error("Failed to initiate call");
@@ -438,22 +433,6 @@ export const MakeCallDialog = () => {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="outbound-number">Outbound Phone Number (Optional)</Label>
-            <Select value={selectedPhoneNumber} onValueChange={setSelectedPhoneNumber} disabled={isLoading || phoneNumbersLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder={phoneNumbersLoading ? "Loading numbers..." : "Use default or select"} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Use Default</SelectItem>
-                {phoneNumbers.map((number) => (
-                  <SelectItem key={number.id} value={number.id}>
-                    {number.name || number.number}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
