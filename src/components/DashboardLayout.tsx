@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, BookOpen } from "lucide-react";
+import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, BookOpen, MessageSquare } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -17,19 +17,20 @@ interface NavItem {
   icon: LucideIcon;
   label: string;
   path: string;
-  requiredPermission?: "canManageFiles" | "canManageKnowledgeBase";
+  requiredPermission?: "canManageFiles" | "canManageKnowledgeBase" | "canViewReports";
 }
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const { role, canManageFiles, canManageKnowledgeBase } = useUserRole();
+  const { role, canManageFiles, canManageKnowledgeBase, canViewReports } = useUserRole();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const allNavItems: NavItem[] = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/" },
     { icon: Upload, label: "Database Files", path: "/upload", requiredPermission: "canManageFiles" },
     { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base", requiredPermission: "canManageKnowledgeBase" },
+    { icon: MessageSquare, label: "SMS History", path: "/sms-history", requiredPermission: "canViewReports" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
@@ -38,6 +39,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     if (!item.requiredPermission) return true;
     if (item.requiredPermission === "canManageFiles") return canManageFiles;
     if (item.requiredPermission === "canManageKnowledgeBase") return canManageKnowledgeBase;
+    if (item.requiredPermission === "canViewReports") return canViewReports;
     return true;
   });
 
