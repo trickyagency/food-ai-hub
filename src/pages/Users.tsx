@@ -213,12 +213,12 @@ const Users = () => {
   };
 
   const canManageUser = (userRole: string) => {
+    // Only owners can manage users
     if (currentUserRole === "owner") return true;
-    if (currentUserRole === "admin" && userRole !== "owner" && userRole !== "admin") return true;
     return false;
   };
 
-  if (!currentUserRole || (currentUserRole !== "owner" && currentUserRole !== "admin")) {
+  if (!currentUserRole || currentUserRole !== "owner") {
     return (
       <DashboardLayout>
         <div className="p-8">
