@@ -4,13 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Eye, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
-import { format } from "date-fns";
+import { Search, Eye, ChevronLeft, ChevronRight, ShoppingBag, X } from "lucide-react";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { DateRange } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { Tables } from "@/integrations/supabase/types";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderDetailDialog } from "./OrderDetailDialog";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink } from "@/components/ui/pagination";
+import DateRangePicker from "@/components/dashboard/DateRangePicker";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -25,6 +27,7 @@ export const OrdersTable = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedOrder, setSelectedOrder] = useState<Tables<"orders"> | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -76,8 +79,24 @@ export const OrdersTable = () => {
     const matchesStatus =
       statusFilter === "all" || order.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesDateRange =
+      !dateRange?.from ||
+      !dateRange?.to ||
+      (order.created_at &&
+        new Date(order.created_at) >= startOfDay(dateRange.from) &&
+        new Date(order.created_at) <= endOfDay(dateRange.to));
+
+    return matchesSearch && matchesStatus && matchesDateRange;
   });
+
+  const hasActiveFilters = searchQuery !== "" || statusFilter !== "all" || dateRange !== undefined;
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setDateRange(undefined);
+    setCurrentPage(1);
+  };
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const paginatedOrders = filteredOrders.slice(
@@ -112,7 +131,7 @@ export const OrdersTable = () => {
               <ShoppingBag className="h-5 w-5" />
               Orders
             </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -125,6 +144,14 @@ export const OrdersTable = () => {
                   }}
                 />
               </div>
+              <DateRangePicker
+                dateRange={dateRange}
+                onDateRangeChange={(range) => {
+                  setDateRange(range);
+                  setCurrentPage(1);
+                }}
+                className="w-full sm:w-auto"
+              />
               <Select
                 value={statusFilter}
                 onValueChange={(value) => {
@@ -143,6 +170,12 @@ export const OrdersTable = () => {
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="gap-1">
+                  <X className="h-4 w-4" />
+                  Clear Filters
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
