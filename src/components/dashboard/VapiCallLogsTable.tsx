@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import CallDetailDialog from "./CallDetailDialog";
 import SwipeableCallRow from "./SwipeableCallRow";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { formatDuration } from "@/lib/utils";
 
 interface VapiCallLogsTableProps {
   calls: VapiCall[];
@@ -123,9 +124,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                           {call.customer?.number || call.phoneNumber?.number || "N/A"}
                         </TableCell>
                         <TableCell>
-                          {call.duration
-                            ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s`
-                            : "N/A"}
+                          {call.duration ? formatDuration(call.duration) : "N/A"}
                         </TableCell>
                         <TableCell className="font-semibold">
                           ${(call.cost || 0).toFixed(4)}

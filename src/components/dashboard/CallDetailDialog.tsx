@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +12,7 @@ import { VapiCall } from "@/hooks/useVapiCalls";
 import { format } from "date-fns";
 import { Phone, Clock, DollarSign, MessageSquare, Volume2, Download } from "lucide-react";
 import CallTagManager from "./CallTagManager";
+import { formatDuration } from "@/lib/utils";
 
 interface CallDetailDialogProps {
   call: VapiCall;
@@ -96,9 +96,7 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Duration</p>
                 <p className="text-sm sm:text-base font-semibold">
-                  {call.duration
-                    ? `${Math.floor(call.duration / 60)}m ${call.duration % 60}s`
-                    : "N/A"}
+                  {call.duration ? formatDuration(call.duration) : "N/A"}
                 </p>
               </div>
               <div className="space-y-1">
