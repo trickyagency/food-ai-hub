@@ -60,6 +60,14 @@ Deno.serve(async (req) => {
     const calls = await callsResponse.json();
     console.log(`Fetched ${calls.length} calls from Vapi`);
 
+    // Calculate duration from startedAt and endedAt timestamps
+    const calculateDuration = (startedAt?: string, endedAt?: string): number | null => {
+      if (!startedAt || !endedAt) return null;
+      const start = new Date(startedAt).getTime();
+      const end = new Date(endedAt).getTime();
+      return Math.round((end - start) / 1000); // seconds
+    };
+
     // Upsert calls to database
     if (calls.length > 0) {
       const callsToInsert = calls.map((call: any) => ({
@@ -71,7 +79,7 @@ Deno.serve(async (req) => {
         phone_number_id: call.phoneNumberId,
         phone_number: call.phoneNumber?.number,
         assistant_id: call.assistantId,
-        duration: call.duration,
+        duration: call.duration ?? calculateDuration(call.startedAt, call.endedAt),
         cost: call.cost,
         cost_breakdown: call.costs,
         ended_reason: call.endedReason,
