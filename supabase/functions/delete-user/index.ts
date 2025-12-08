@@ -50,9 +50,10 @@ Deno.serve(async (req) => {
       .eq('user_id', requestingUser.id)
       .single();
 
-    if (roleError || !roleData || (roleData.role !== 'admin' && roleData.role !== 'owner')) {
+    // Only owners can delete users
+    if (roleError || !roleData || roleData.role !== 'owner') {
       return new Response(
-        JSON.stringify({ error: 'Insufficient permissions' }),
+        JSON.stringify({ error: 'Insufficient permissions. Only owners can delete users.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -72,28 +73,6 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Cannot delete your own account' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check if the user to be deleted exists and get their role
-    const { data: targetUserRole, error: targetRoleError } = await supabaseClient
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .single();
-
-    if (targetRoleError) {
-      return new Response(
-        JSON.stringify({ error: 'User not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Admins cannot delete owners or other admins
-    if (roleData.role === 'admin' && (targetUserRole.role === 'owner' || targetUserRole.role === 'admin')) {
-      return new Response(
-        JSON.stringify({ error: 'Admins cannot delete owners or other admins' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

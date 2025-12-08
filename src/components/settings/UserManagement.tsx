@@ -305,9 +305,8 @@ const UserManagement = () => {
   const canManageUser = (userId: string, userRole: string) => {
     // Cannot manage own role
     if (userId === currentUserId) return false;
-    
+    // Only owners can manage users
     if (currentUserRole === "owner") return true;
-    if (currentUserRole === "admin" && userRole !== "owner" && userRole !== "admin") return true;
     return false;
   };
 
