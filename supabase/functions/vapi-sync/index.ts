@@ -140,53 +140,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Sync phone numbers
-    console.log('Fetching phone numbers from Vapi...');
-    const phoneNumbersResponse = await fetch('https://api.vapi.ai/phone-number', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${VAPI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    let phoneNumbersCount = 0;
-    if (phoneNumbersResponse.ok) {
-      const phoneNumbers = await phoneNumbersResponse.json();
-      phoneNumbersCount = phoneNumbers.length;
-      console.log(`Fetched ${phoneNumbers.length} phone numbers from Vapi`);
-
-      if (phoneNumbers.length > 0) {
-        const phoneNumbersToInsert = phoneNumbers.map((phoneNumber: any) => ({
-          id: phoneNumber.id,
-          number: phoneNumber.number,
-          name: phoneNumber.name,
-          assistant_id: phoneNumber.assistantId,
-          created_at: phoneNumber.createdAt,
-          updated_at: phoneNumber.updatedAt || new Date().toISOString(),
-          user_id: user.id,
-          full_data: phoneNumber,
-        }));
-
-        const { error: phoneNumbersError } = await supabaseClient
-          .from('vapi_phone_numbers_cache')
-          .upsert(phoneNumbersToInsert, { onConflict: 'id' });
-
-        if (phoneNumbersError) {
-          console.error('Error upserting phone numbers:', phoneNumbersError);
-        } else {
-          console.log(`Synced ${phoneNumbersToInsert.length} phone numbers to cache`);
-        }
-      }
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
         synced: {
           calls: calls.length,
           assistants: assistantsCount,
-          phoneNumbers: phoneNumbersCount,
         },
       }),
       {

@@ -72,7 +72,7 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
               <div className="space-y-1">
                 <p className="text-sm font-medium text-muted-foreground">Phone Number</p>
                 <p className="text-sm sm:text-base font-mono break-all">
-                  {call.customer?.number || call.phoneNumber?.number || "N/A"}
+                  {call.customer?.number || "N/A"}
                 </p>
               </div>
               {call.customer?.name && (

@@ -17,7 +17,6 @@ import RealTimeCallMonitor from "@/components/dashboard/RealTimeCallMonitor";
 import DetailedAnalytics from "@/components/dashboard/DetailedAnalytics";
 import { MakeCallDialog } from "@/components/dashboard/MakeCallDialog";
 import { AssistantsWidget } from "@/components/dashboard/AssistantsWidget";
-import { PhoneNumbersWidget } from "@/components/dashboard/PhoneNumbersWidget";
 import { AccountOverviewWidget } from "@/components/dashboard/AccountOverviewWidget";
 import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicator";
 import { ExportAnalytics } from "@/components/dashboard/ExportAnalytics";
@@ -192,11 +191,8 @@ const Index = () => {
                       {/* Account Overview */}
                       <AccountOverviewWidget analytics={allAnalytics} />
                       
-                      {/* Resources Grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                        <AssistantsWidget />
-                        <PhoneNumbersWidget />
-                      </div>
+                      {/* Resources */}
+                      <AssistantsWidget />
                     </TabsContent>
                   </Tabs>
                 </>
