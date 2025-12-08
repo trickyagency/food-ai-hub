@@ -24,11 +24,11 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <RealtimeNotifications />
-        <OrderNotifications />
         <UploadFailureMonitor />
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <OrderNotifications />
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
