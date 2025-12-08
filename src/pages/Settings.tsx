@@ -10,6 +10,7 @@ import AuditLogViewer from "@/components/settings/AuditLogViewer";
 import EmailNotifications from "@/components/settings/EmailNotifications";
 import UserActivityDashboard from "@/components/settings/UserActivityDashboard";
 import VapiSettings from "@/components/settings/VapiSettings";
+import RolePermissionsSummary from "@/components/settings/RolePermissionsSummary";
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Settings = () => {
@@ -25,6 +26,8 @@ const Settings = () => {
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">Settings</h1>
           <p className="text-base text-muted-foreground">Manage your account settings and preferences</p>
         </div>
+
+        <RolePermissionsSummary />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-muted/50 p-1">
