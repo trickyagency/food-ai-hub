@@ -3,13 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Phone, Clock, Calendar, FileText, ShoppingBag } from "lucide-react";
+import { Phone, Clock, Calendar, FileText, ShoppingBag, Printer } from "lucide-react";
 import { format } from "date-fns";
 import { OrderStatusBadge } from "./OrderStatusBadge";
+import { OrderReceiptPrint } from "./OrderReceiptPrint";
 import { Tables } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface OrderDetailDialogProps {
   order: Tables<"orders"> | null;
@@ -27,6 +28,7 @@ interface OrderItem {
 
 export const OrderDetailDialog = ({ order, open, onOpenChange, onStatusUpdate }: OrderDetailDialogProps) => {
   const [updating, setUpdating] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   if (!order) return null;
 
@@ -52,15 +54,28 @@ export const OrderDetailDialog = ({ order, open, onOpenChange, onStatusUpdate }:
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShoppingBag className="h-5 w-5" />
-            Order Details
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5" />
+              Order Details
+            </DialogTitle>
+            <Button variant="outline" size="sm" onClick={handlePrint} className="mr-6">
+              <Printer className="h-4 w-4 mr-1" />
+              Print Receipt
+            </Button>
+          </div>
         </DialogHeader>
+
+        {/* Hidden print receipt */}
+        <OrderReceiptPrint ref={receiptRef} order={order} />
 
         <div className="space-y-6">
           {/* Status Section */}
