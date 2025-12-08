@@ -117,7 +117,7 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
           <Separator />
 
           {/* Cost Breakdown */}
-          {call.costBreakdown && (
+          {(call.costBreakdown || call.cost !== undefined) && (
             <>
               <div className="space-y-4">
                 <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -126,39 +126,39 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">STT</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Speech-to-Text</p>
                     <p className="text-base sm:text-lg font-bold">
-                      ${(call.costBreakdown.stt || 0).toFixed(4)}
+                      ${(call.costBreakdown?.stt ?? 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">LLM</p>
                     <p className="text-base sm:text-lg font-bold">
-                      ${(call.costBreakdown.llm || 0).toFixed(4)}
+                      ${(call.costBreakdown?.llm ?? 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">TTS</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Text-to-Speech</p>
                     <p className="text-base sm:text-lg font-bold">
-                      ${(call.costBreakdown.tts || 0).toFixed(4)}
+                      ${(call.costBreakdown?.tts ?? 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Vapi</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Vapi Platform</p>
                     <p className="text-base sm:text-lg font-bold">
-                      ${(call.costBreakdown.vapi || 0).toFixed(4)}
+                      ${(call.costBreakdown?.vapi ?? 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Transport</p>
                     <p className="text-base sm:text-lg font-bold">
-                      ${(call.costBreakdown.transport || 0).toFixed(4)}
+                      ${(call.costBreakdown?.transport ?? 0).toFixed(4)}
                     </p>
                   </div>
                   <div className="p-3 bg-primary/10 rounded-lg border-2 border-primary/20">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Total</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Total Cost</p>
                     <p className="text-base sm:text-lg font-bold text-primary">
-                      ${(call.cost || 0).toFixed(4)}
+                      ${(call.cost ?? call.costBreakdown?.total ?? 0).toFixed(4)}
                     </p>
                   </div>
                 </div>
