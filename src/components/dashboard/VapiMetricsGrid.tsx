@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone, Clock, DollarSign, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
+import { formatTotalDuration } from "@/lib/utils";
 
 interface VapiMetricsGridProps {
   analytics: VapiAnalytics;
@@ -18,8 +19,8 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
       bgColor: "bg-blue-100 dark:bg-blue-950/30",
     },
     {
-      title: "Total Minutes",
-      value: Math.round(analytics.totalMinutes).toLocaleString(),
+      title: "Total Duration",
+      value: formatTotalDuration(analytics.totalMinutes),
       icon: Clock,
       trend: analytics.trends.minutesChange,
       color: "text-purple-600 dark:text-purple-400",

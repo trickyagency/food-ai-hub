@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ExternalLink, DollarSign, Phone, Bot, Clock } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
+import { formatTotalDuration } from "@/lib/utils";
 
 interface AccountOverviewWidgetProps {
   analytics: VapiAnalytics;
@@ -38,9 +39,9 @@ export const AccountOverviewWidget = ({ analytics }: AccountOverviewWidgetProps)
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Clock className="w-4 h-4" />
-              Total Minutes
+              Total Duration
             </div>
-            <p className="text-2xl font-bold">{analytics.totalMinutes.toFixed(1)}</p>
+            <p className="text-2xl font-bold">{formatTotalDuration(analytics.totalMinutes)}</p>
           </div>
           
           <div className="space-y-1">
