@@ -117,7 +117,35 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
       const callsData = Array.isArray(data) ? data : [];
       console.log(`Fetched ${callsData.length} calls from Vapi`);
       
-      setCalls(callsData);
+      // Calculate duration from startedAt and endedAt timestamps
+      const calculateDuration = (startedAt?: string, endedAt?: string): number => {
+        if (!startedAt || !endedAt) return 0;
+        const start = new Date(startedAt).getTime();
+        const end = new Date(endedAt).getTime();
+        return Math.round((end - start) / 1000); // seconds
+      };
+
+      // Map Vapi response to VapiCall interface with calculated duration
+      const mappedCalls = callsData.map((call: any) => ({
+        id: call.id,
+        type: call.type,
+        status: call.status,
+        customer: call.customer,
+        phoneNumber: call.phoneNumber,
+        duration: call.duration ?? calculateDuration(call.startedAt, call.endedAt),
+        cost: call.cost,
+        costBreakdown: call.costs,
+        endedReason: call.endedReason,
+        createdAt: call.createdAt,
+        updatedAt: call.updatedAt,
+        transcript: call.transcript,
+        recordingUrl: call.recordingUrl,
+        summary: call.summary,
+        startedAt: call.startedAt,
+        endedAt: call.endedAt,
+      }));
+      
+      setCalls(mappedCalls);
       setLastUpdated(new Date());
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch calls";
