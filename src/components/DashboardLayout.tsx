@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, BookOpen, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, BookOpen, MessageSquare, ShoppingCart } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -31,6 +31,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { icon: Upload, label: "Database Files", path: "/upload", requiredPermission: "canManageFiles" },
     { icon: BookOpen, label: "Knowledge Base", path: "/knowledge-base", requiredPermission: "canManageKnowledgeBase" },
     { icon: MessageSquare, label: "SMS History", path: "/sms-history", requiredPermission: "canViewReports" },
+    { icon: ShoppingCart, label: "Orders", path: "/orders", requiredPermission: "canViewReports" },
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 

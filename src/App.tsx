@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import SmsHistory from "./pages/SmsHistory";
+import Orders from "./pages/Orders";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SmsHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <Orders />
                 </ProtectedRoute>
               }
             />
