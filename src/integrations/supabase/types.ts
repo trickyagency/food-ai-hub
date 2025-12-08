@@ -248,6 +248,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_logs: {
+        Row: {
+          call_id: string | null
+          created_at: string
+          customer_number: string
+          error_message: string | null
+          id: string
+          message_content: string
+          order_details: Json | null
+          status: string
+          twilio_sid: string | null
+          user_id: string | null
+        }
+        Insert: {
+          call_id?: string | null
+          created_at?: string
+          customer_number: string
+          error_message?: string | null
+          id?: string
+          message_content: string
+          order_details?: Json | null
+          status?: string
+          twilio_sid?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          call_id?: string | null
+          created_at?: string
+          customer_number?: string
+          error_message?: string | null
+          id?: string
+          message_content?: string
+          order_details?: Json | null
+          status?: string
+          twilio_sid?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_role_history: {
         Row: {
           changed_at: string
