@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Phone, Clock, DollarSign, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
-import { formatTotalDuration } from "@/lib/utils";
+import { getDurationBreakdown } from "@/lib/utils";
 
 interface VapiMetricsGridProps {
   analytics: VapiAnalytics;
@@ -9,6 +9,8 @@ interface VapiMetricsGridProps {
 }
 
 const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
+  const duration = getDurationBreakdown(analytics.totalMinutes);
+  
   const metrics = [
     {
       title: "Total Calls",
@@ -17,14 +19,6 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
       trend: analytics.trends.callsChange,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-100 dark:bg-blue-950/30",
-    },
-    {
-      title: "Total Duration",
-      value: formatTotalDuration(analytics.totalMinutes),
-      icon: Clock,
-      trend: analytics.trends.minutesChange,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-100 dark:bg-purple-950/30",
     },
     {
       title: "Total Cost",
@@ -66,6 +60,33 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Duration Breakdown Card */}
+      <Card className="border-border/50 shadow-sm hover:shadow-md transition-all duration-200">
+        <CardContent className="p-6 space-y-4">
+          <div className="flex items-start justify-between">
+            <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-950/30 flex items-center justify-center">
+              <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400">
+              <ArrowUp className="w-3 h-3" />
+              {Math.abs(analytics.trends.minutesChange)}%
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">Total Duration</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-foreground">{duration.hours}</span>
+              <span className="text-xs text-muted-foreground mr-2">hrs</span>
+              <span className="text-2xl font-bold text-foreground">{duration.minutes}</span>
+              <span className="text-xs text-muted-foreground mr-2">min</span>
+              <span className="text-2xl font-bold text-foreground">{duration.seconds}</span>
+              <span className="text-xs text-muted-foreground">sec</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Other Metrics */}
       {metrics.map((metric) => {
         const Icon = metric.icon;
         const isPositive = metric.trend >= 0;

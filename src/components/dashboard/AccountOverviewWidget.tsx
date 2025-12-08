@@ -2,13 +2,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { ExternalLink, DollarSign, Phone, Bot, Clock } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
-import { formatTotalDuration } from "@/lib/utils";
+import { getDurationBreakdown } from "@/lib/utils";
 
 interface AccountOverviewWidgetProps {
   analytics: VapiAnalytics;
 }
 
 export const AccountOverviewWidget = ({ analytics }: AccountOverviewWidgetProps) => {
+  const duration = getDurationBreakdown(analytics.totalMinutes);
+  
   return (
     <Card>
       <CardHeader>
@@ -41,7 +43,14 @@ export const AccountOverviewWidget = ({ analytics }: AccountOverviewWidgetProps)
               <Clock className="w-4 h-4" />
               Total Duration
             </div>
-            <p className="text-2xl font-bold">{formatTotalDuration(analytics.totalMinutes)}</p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold">{duration.hours}</span>
+              <span className="text-xs text-muted-foreground">h</span>
+              <span className="text-2xl font-bold ml-1">{duration.minutes}</span>
+              <span className="text-xs text-muted-foreground">m</span>
+              <span className="text-2xl font-bold ml-1">{duration.seconds}</span>
+              <span className="text-xs text-muted-foreground">s</span>
+            </div>
           </div>
           
           <div className="space-y-1">
