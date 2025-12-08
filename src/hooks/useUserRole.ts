@@ -40,8 +40,15 @@ export const useUserRole = () => {
     return role && requiredRoles.includes(role);
   };
 
+  // Permission helpers based on role hierarchy
   const canManageUsers = role === "owner" || role === "admin";
+  const canManageFiles = role === "owner" || role === "admin";
+  const canManageKnowledgeBase = role === "owner" || role === "admin";
+  const canViewActivityLogs = role === "owner" || role === "admin";
   const canViewReports = role === "owner" || role === "admin" || role === "manager";
+  const canMakeCalls = role === "owner" || role === "admin" || role === "manager";
+  const canViewCallLogs = role === "owner" || role === "admin" || role === "manager" || role === "staff";
+  const canViewDashboard = true; // All roles can view dashboard metrics
   const isOwner = role === "owner";
   const isAdmin = role === "admin";
 
@@ -50,7 +57,13 @@ export const useUserRole = () => {
     loading,
     hasPermission,
     canManageUsers,
+    canManageFiles,
+    canManageKnowledgeBase,
+    canViewActivityLogs,
     canViewReports,
+    canMakeCalls,
+    canViewCallLogs,
+    canViewDashboard,
     isOwner,
     isAdmin,
   };

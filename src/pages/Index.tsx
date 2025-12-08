@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Activity, Phone, Settings } from "lucide-react";
 
 const Index = () => {
-  const { role } = useUserRole();
+  const { role, canMakeCalls, canViewCallLogs, canViewDashboard } = useUserRole();
   const [filters, setFilters] = useState<CallFilterOptions>({
     dateRange: "all",
     customStartDate: undefined,
@@ -53,9 +53,9 @@ const Index = () => {
   const hasActiveFilters = filters.dateRange !== "all" || filters.category || filters.status || filters.type;
   const analytics = hasActiveFilters ? filteredAnalytics : allAnalytics;
 
-  // Define what each role can see
+  // Define what each role can see - Owner/Admin/Manager can see advanced metrics
   const canSeeAdvancedMetrics = role === "owner" || role === "admin" || role === "manager";
-  const canSeeCallLogs = role !== "viewer";
+  const canSeeCallLogs = canViewCallLogs;
 
   const handleRefresh = async () => {
     await refreshAnalytics();
@@ -94,7 +94,7 @@ const Index = () => {
               </div>
               <div className="flex gap-2">
                 <ExportAnalytics calls={filteredCalls} analytics={analytics} />
-                <MakeCallDialog />
+                {canMakeCalls && <MakeCallDialog />}
               </div>
             </div>
             
