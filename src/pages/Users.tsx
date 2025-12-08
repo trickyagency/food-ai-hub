@@ -212,13 +212,20 @@ const Users = () => {
     }
   };
 
-  const canManageUser = (userRole: string) => {
-    // Only owners can manage users
+  // Can change role (Owner can change all, Admin can change non-privileged)
+  const canChangeRole = (userRole: string) => {
     if (currentUserRole === "owner") return true;
+    if (currentUserRole === "admin" && userRole !== "owner" && userRole !== "admin") return true;
     return false;
   };
 
-  if (!currentUserRole || currentUserRole !== "owner") {
+  // Can delete user (Owner only)
+  const canDeleteUser = () => {
+    return currentUserRole === "owner";
+  };
+
+  // Allow both owners and admins to access the page
+  if (!currentUserRole || (currentUserRole !== "owner" && currentUserRole !== "admin")) {
     return (
       <DashboardLayout>
         <div className="p-8">
@@ -240,16 +247,21 @@ const Users = () => {
         <div className="flex justify-between items-start">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground">Manage user roles and permissions</p>
+            <p className="text-muted-foreground">
+              {currentUserRole === "owner" 
+                ? "Manage user accounts and roles" 
+                : "Assign roles to users"}
+            </p>
           </div>
           
-          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add User
-              </Button>
-            </DialogTrigger>
+          {currentUserRole === "owner" && (
+            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New User</DialogTitle>
@@ -302,18 +314,19 @@ const Users = () => {
                       <SelectItem value="viewer">Viewer</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <Button 
-                  onClick={addNewUser} 
-                  disabled={isAddingUser}
-                  className="w-full"
-                >
-                  {isAddingUser ? "Creating..." : "Create User"}
-                </Button>
               </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+              <Button 
+                onClick={addNewUser} 
+                disabled={isAddingUser}
+                className="w-full"
+              >
+                {isAddingUser ? "Creating..." : "Create User"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+          )}
+      </div>
 
         <Card>
           <CardHeader>
@@ -341,8 +354,8 @@ const Users = () => {
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.email}</TableCell>
                       <TableCell>{user.full_name || "-"}</TableCell>
-                      <TableCell>
-                        {canManageUser(user.role) ? (
+                  <TableCell>
+                        {canChangeRole(user.role) ? (
                           <Select
                             value={user.role}
                             onValueChange={(value) => updateUserRole(user.id, value)}
@@ -373,7 +386,7 @@ const Users = () => {
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-right">
-                        {canManageUser(user.role) && (
+                        {canDeleteUser() && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon">

@@ -50,7 +50,7 @@ interface UserWithRole extends UserProfile {
 
 const UserManagement = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
-  const { role: currentUserRole } = useUserRole();
+  const { role: currentUserRole, canManageUsers, canAssignRoles } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -302,12 +302,19 @@ const UserManagement = () => {
     }
   };
 
-  const canManageUser = (userId: string, userRole: string) => {
-    // Cannot manage own role
-    if (userId === currentUserId) return false;
-    // Only owners can manage users
+  // Can change role (Owner can change all, Admin can change non-privileged)
+  const canChangeRole = (userId: string, userRole: string) => {
+    if (userId === currentUserId) return false; // Cannot change own role
     if (currentUserRole === "owner") return true;
+    // Admin can only change non-privileged users' roles
+    if (currentUserRole === "admin" && userRole !== "owner" && userRole !== "admin") return true;
     return false;
+  };
+
+  // Can delete user (Owner only)
+  const canDeleteUser = (userId: string) => {
+    if (userId === currentUserId) return false; // Cannot delete own account
+    return currentUserRole === "owner";
   };
 
   return (
@@ -327,12 +334,14 @@ const UserManagement = () => {
               <div className="bg-muted p-3 rounded-md space-y-2 text-sm">
                 <p className="font-semibold text-foreground">Admin users will have elevated permissions to:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Add and manage users</li>
-                  <li>Assign roles (Manager, Staff, Viewer)</li>
+                  <li>Assign roles to users (Manager, Staff, Viewer)</li>
                   <li>View all audit logs and user activity</li>
+                  <li>Manage database files and knowledge base</li>
                   <li>Access sensitive data and settings</li>
-                  <li>Delete non-privileged users</li>
                 </ul>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Note: Admins cannot add or delete users - only Owners can.
+                </p>
               </div>
               <p className="text-destructive font-medium">
                 ⚠️ Only promote trusted users to this role.
@@ -353,16 +362,21 @@ const UserManagement = () => {
         <div className="flex justify-between items-start">
           <div>
             <CardTitle>User Management</CardTitle>
-            <CardDescription>Manage user accounts and their permissions</CardDescription>
+            <CardDescription>
+              {canManageUsers 
+                ? "Manage user accounts and their permissions" 
+                : "Assign roles to users"}
+            </CardDescription>
           </div>
 
-          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Add User
-              </Button>
-            </DialogTrigger>
+          {canManageUsers && (
+            <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add User
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add New User</DialogTitle>
@@ -415,6 +429,7 @@ const UserManagement = () => {
               </div>
             </DialogContent>
           </Dialog>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -437,7 +452,7 @@ const UserManagement = () => {
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>{user.full_name || "-"}</TableCell>
                   <TableCell>
-                    {canManageUser(user.id, user.role) ? (
+                    {canChangeRole(user.id, user.role) ? (
                       <Select
                         value={user.role}
                         onValueChange={(value) => handleRoleChangeRequest(user.id, value)}
@@ -468,7 +483,7 @@ const UserManagement = () => {
                     {new Date(user.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    {canManageUser(user.id, user.role) && (
+                    {canDeleteUser(user.id) && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon">

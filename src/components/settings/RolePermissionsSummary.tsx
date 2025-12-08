@@ -14,6 +14,7 @@ const RolePermissionsSummary = () => {
     canManageFiles,
     canManageKnowledgeBase,
     canManageUsers,
+    canAssignRoles,
     canViewActivityLogs,
   } = useUserRole();
 
@@ -70,7 +71,8 @@ const RolePermissionsSummary = () => {
       items: [
         { label: "Manage Database Files", granted: canManageFiles },
         { label: "Manage Knowledge Base", granted: canManageKnowledgeBase },
-        { label: "Manage Users & Roles", granted: canManageUsers },
+        { label: "Add & Delete Users", granted: canManageUsers },
+        { label: "Assign User Roles", granted: canAssignRoles },
         { label: "View Activity & Audit Logs", granted: canViewActivityLogs },
       ],
     },
