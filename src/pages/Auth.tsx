@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Chrome } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,7 +13,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup, signInWithGoogle, resetPassword, isAuthenticated } = useAuth();
+  const { login, signup, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,15 +54,6 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      console.log('Google sign-in button clicked');
-      await signInWithGoogle();
-    } catch (error: any) {
-      console.error('Google sign-in error:', error);
-      toast.error(error?.message || "Google sign-in failed. Please check your configuration.");
-    }
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary to-accent p-4">
@@ -82,31 +71,6 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!isResetPassword && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full mb-4"
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-              >
-                <Chrome className="mr-2 h-4 w-4" />
-                Continue with Google
-              </Button>
-
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with email
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

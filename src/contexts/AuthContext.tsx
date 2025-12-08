@@ -7,7 +7,6 @@ interface AuthContextType {
   session: Session | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   enroll2FA: () => Promise<{ success: boolean; data?: any; error?: string }>;
@@ -100,29 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      const redirectUrl = `${window.location.origin}/`;
-      console.log('Starting Google OAuth with redirect:', redirectUrl);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl
-        }
-      });
-
-      if (error) {
-        console.error('Google OAuth error:', error);
-        throw error;
-      }
-
-      console.log('Google OAuth initiated:', data);
-    } catch (error: any) {
-      console.error('Failed to initiate Google sign-in:', error);
-      throw error;
-    }
-  };
 
   const logout = async () => {
     await logAuditEvent('logout');
@@ -215,7 +191,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         login,
         signup,
-        signInWithGoogle,
         logout,
         resetPassword,
         enroll2FA,
