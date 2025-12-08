@@ -41,7 +41,8 @@ export const useUserRole = () => {
   };
 
   // Permission helpers based on role hierarchy
-  const canManageUsers = role === "owner";
+  const canManageUsers = role === "owner"; // Add/delete users - Owner only
+  const canAssignRoles = role === "owner" || role === "admin"; // Change roles - Owner + Admin
   const canManageFiles = role === "owner" || role === "admin";
   const canManageKnowledgeBase = role === "owner" || role === "admin";
   const canViewActivityLogs = role === "owner" || role === "admin";
@@ -57,6 +58,7 @@ export const useUserRole = () => {
     loading,
     hasPermission,
     canManageUsers,
+    canAssignRoles,
     canManageFiles,
     canManageKnowledgeBase,
     canViewActivityLogs,
