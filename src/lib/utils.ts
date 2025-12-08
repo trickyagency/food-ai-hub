@@ -22,3 +22,11 @@ export function formatTotalDuration(totalMinutes: number): string {
   const totalSeconds = Math.round(totalMinutes * 60);
   return formatDuration(totalSeconds);
 }
+
+export function getDurationBreakdown(totalMinutes: number): { hours: number; minutes: number; seconds: number } {
+  const totalSeconds = Math.round(totalMinutes * 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return { hours, minutes, seconds };
+}
