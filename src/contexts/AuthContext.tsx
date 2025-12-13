@@ -65,31 +65,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await supabase.auth.signOut();
           setSession(null);
           setUser(null);
-        } else if (session) {
-          // Check if token is close to expiring and refresh
-          const expiresAt = session.expires_at;
-          const now = Math.floor(Date.now() / 1000);
-          const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
-          
-          if (timeUntilExpiry < 60) {
-            // Token expires in less than 60 seconds, refresh it
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            if (refreshError) {
-              console.error('Failed to refresh session:', refreshError);
-              await supabase.auth.signOut();
-              setSession(null);
-              setUser(null);
-            } else {
-              setSession(refreshData.session);
-              setUser(refreshData.session?.user ?? null);
-            }
+          return;
+        }
+        
+        if (!session) {
+          setSession(null);
+          setUser(null);
+          return;
+        }
+
+        // Check if token is already expired or about to expire
+        const expiresAt = session.expires_at;
+        const now = Math.floor(Date.now() / 1000);
+        const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
+        
+        console.log('Token expires in:', timeUntilExpiry, 'seconds');
+        
+        if (timeUntilExpiry <= 0) {
+          // Token already expired, try to refresh
+          console.log('Token expired, attempting refresh...');
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData.session) {
+            console.error('Failed to refresh expired session:', refreshError);
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+          } else {
+            console.log('Session refreshed successfully');
+            setSession(refreshData.session);
+            setUser(refreshData.session?.user ?? null);
+          }
+        } else if (timeUntilExpiry < 300) {
+          // Token expires in less than 5 minutes, proactively refresh
+          console.log('Token expiring soon, proactively refreshing...');
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) {
+            console.error('Failed to refresh session:', refreshError);
+            // Use existing session if refresh fails
+            setSession(session);
+            setUser(session?.user ?? null);
+          } else if (refreshData.session) {
+            console.log('Session proactively refreshed');
+            setSession(refreshData.session);
+            setUser(refreshData.session?.user ?? null);
           } else {
             setSession(session);
             setUser(session?.user ?? null);
           }
+        } else {
+          setSession(session);
+          setUser(session?.user ?? null);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
+        setSession(null);
+        setUser(null);
       } finally {
         setLoading(false);
       }
