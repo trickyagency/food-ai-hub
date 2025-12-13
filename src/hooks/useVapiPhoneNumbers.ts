@@ -19,10 +19,11 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
     setError(null);
 
     try {
-      // First try to get from cache
+      // First try to get Twilio numbers from cache
       const { data: cachedData } = await supabase
         .from('vapi_phone_numbers_cache')
-        .select('id, number, name, assistant_id');
+        .select('id, number, name, assistant_id, full_data')
+        .eq('full_data->>provider', 'twilio');
 
       if (cachedData && cachedData.length > 0) {
         const numbers = cachedData.map((pn) => ({
@@ -33,7 +34,7 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
         }));
         setPhoneNumbers(numbers);
         
-        // Auto-select first phone number as Twilio number (there should only be one)
+        // Auto-select first Twilio phone number
         if (numbers.length > 0) {
           setTwilioPhoneNumber(numbers[0]);
         }
@@ -70,9 +71,11 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
         return;
       }
 
-      // Parse the response
+      // Parse the response and filter for Twilio numbers only
       const numbersArray = Array.isArray(data) ? data : [];
-      const numbers = numbersArray.map((pn: any) => ({
+      const twilioNumbers = numbersArray.filter((pn: any) => pn.provider === 'twilio');
+      
+      const numbers = twilioNumbers.map((pn: any) => ({
         id: pn.id,
         number: pn.number || pn.twilioPhoneNumber || '',
         name: pn.name || null,
@@ -81,16 +84,16 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
 
       setPhoneNumbers(numbers);
       
-      // Auto-select first phone number as Twilio number (there should only be one)
+      // Auto-select first Twilio phone number
       if (numbers.length > 0) {
         setTwilioPhoneNumber(numbers[0]);
       }
 
-      // Cache the results in Supabase
-      if (numbers.length > 0) {
+      // Cache only Twilio numbers in Supabase
+      if (twilioNumbers.length > 0) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          for (const pn of numbersArray) {
+          for (const pn of twilioNumbers) {
             await supabase.from('vapi_phone_numbers_cache').upsert({
               id: pn.id,
               number: pn.number || pn.twilioPhoneNumber || '',
