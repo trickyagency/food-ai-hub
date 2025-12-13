@@ -10,6 +10,7 @@ export interface VapiPhoneNumber {
 
 export const useVapiPhoneNumbers = (autoFetch = true) => {
   const [phoneNumbers, setPhoneNumbers] = useState<VapiPhoneNumber[]>([]);
+  const [twilioPhoneNumber, setTwilioPhoneNumber] = useState<VapiPhoneNumber | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +20,7 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
 
     try {
       // First try to get from cache
-      const { data: cachedData, error: cacheError } = await supabase
+      const { data: cachedData } = await supabase
         .from('vapi_phone_numbers_cache')
         .select('id, number, name, assistant_id');
 
@@ -31,6 +32,12 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
           assistantId: pn.assistant_id,
         }));
         setPhoneNumbers(numbers);
+        
+        // Auto-select first phone number as Twilio number (there should only be one)
+        if (numbers.length > 0) {
+          setTwilioPhoneNumber(numbers[0]);
+        }
+        
         setLoading(false);
         
         // Trigger background sync
@@ -73,6 +80,11 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
       }));
 
       setPhoneNumbers(numbers);
+      
+      // Auto-select first phone number as Twilio number (there should only be one)
+      if (numbers.length > 0) {
+        setTwilioPhoneNumber(numbers[0]);
+      }
 
       // Cache the results in Supabase
       if (numbers.length > 0) {
@@ -106,5 +118,5 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
     }
   }, [autoFetch]);
 
-  return { phoneNumbers, loading, error, refresh: fetchPhoneNumbers };
+  return { phoneNumbers, twilioPhoneNumber, loading, error, refresh: fetchPhoneNumbers };
 };
