@@ -6,14 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
-import { Phone, Loader2, Check, ChevronsUpDown, Star, Clock } from "lucide-react";
+import { Phone, Loader2, Check, ChevronsUpDown, Star, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
 import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
-
 const phoneNumberSchema = z.string()
   .trim()
   .regex(/^\+[1-9]\d{1,14}$/, "Phone number must be in international format")
@@ -125,7 +124,6 @@ export const MakeCallDialog = () => {
   const [localNumber, setLocalNumber] = useState("");
   const [formattedNumber, setFormattedNumber] = useState("");
   const [selectedAssistant, setSelectedAssistant] = useState("");
-  const [selectedPhoneNumberId, setSelectedPhoneNumberId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
@@ -133,7 +131,7 @@ export const MakeCallDialog = () => {
   const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
 
   const { assistants, loading: assistantsLoading } = useVapiAssistants();
-  const { phoneNumbers, loading: phoneNumbersLoading } = useVapiPhoneNumbers();
+  const { twilioPhoneNumber, loading: phoneNumbersLoading, error: phoneNumberError } = useVapiPhoneNumbers();
 
   // Load recent and favorite countries on mount
   useEffect(() => {
@@ -183,8 +181,13 @@ export const MakeCallDialog = () => {
   const handleMakeCall = async () => {
     const fullPhoneNumber = getFullPhoneNumber();
     
-    if (!localNumber || !selectedAssistant || !selectedPhoneNumberId) {
+    if (!localNumber || !selectedAssistant) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!twilioPhoneNumber) {
+      toast.error("No Twilio phone number configured. Please import your Twilio number in Vapi Dashboard.");
       return;
     }
 
@@ -203,7 +206,8 @@ export const MakeCallDialog = () => {
       console.log("Initiating outbound call...", { 
         phoneNumber: fullPhoneNumber, 
         selectedAssistant, 
-        phoneNumberId: selectedPhoneNumberId 
+        twilioPhoneNumberId: twilioPhoneNumber.id,
+        twilioNumber: twilioPhoneNumber.number
       });
 
       const { data, error } = await supabase.functions.invoke("vapi-proxy", {
@@ -211,7 +215,7 @@ export const MakeCallDialog = () => {
           endpoint: "/call/phone",
           method: "POST",
           assistantId: selectedAssistant,
-          phoneNumberId: selectedPhoneNumberId,
+          phoneNumberId: twilioPhoneNumber.id,
           customer: {
             number: fullPhoneNumber,
           },
@@ -237,7 +241,6 @@ export const MakeCallDialog = () => {
       setFormattedNumber("");
       setCountryCode(countryCodes[0]);
       setSelectedAssistant("");
-      setSelectedPhoneNumberId("");
     } catch (err) {
       console.error("Error initiating call:", err);
       toast.error("Failed to initiate call");
@@ -441,30 +444,29 @@ export const MakeCallDialog = () => {
             </Select>
           </div>
 
+          {/* Twilio Number Display (Auto-detected) */}
           <div className="space-y-2">
-            <Label htmlFor="phone-number">Call From (Your Phone Number) *</Label>
-            <Select value={selectedPhoneNumberId} onValueChange={setSelectedPhoneNumberId} disabled={isLoading || phoneNumbersLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder={phoneNumbersLoading ? "Loading phone numbers..." : "Choose your outbound number"} />
-              </SelectTrigger>
-              <SelectContent>
-                {phoneNumbers.length === 0 && !phoneNumbersLoading ? (
-                  <SelectItem value="none" disabled>
-                    No phone numbers found in Vapi
-                  </SelectItem>
-                ) : (
-                  phoneNumbers.map((pn) => (
-                    <SelectItem key={pn.id} value={pn.id}>
-                      {pn.number} {pn.name ? `(${pn.name})` : ''}
-                    </SelectItem>
-                  ))
+            <Label>Call From (Your Twilio Number)</Label>
+            {phoneNumbersLoading ? (
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Detecting Twilio number...</span>
+              </div>
+            ) : twilioPhoneNumber ? (
+              <div className="flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-md">
+                <Phone className="h-4 w-4 text-primary" />
+                <span className="font-mono text-sm">{twilioPhoneNumber.number}</span>
+                {twilioPhoneNumber.name && (
+                  <span className="text-xs text-muted-foreground">({twilioPhoneNumber.name})</span>
                 )}
-              </SelectContent>
-            </Select>
-            {phoneNumbers.length === 0 && !phoneNumbersLoading && (
-              <p className="text-xs text-muted-foreground">
-                Import your Twilio number in Vapi Dashboard → Phone Numbers
-              </p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <span className="text-sm text-destructive">
+                  No Twilio number found. Import your Twilio number in Vapi Dashboard.
+                </span>
+              </div>
             )}
           </div>
 
@@ -475,7 +477,7 @@ export const MakeCallDialog = () => {
           </Button>
           <Button 
             onClick={handleMakeCall} 
-            disabled={isLoading || !localNumber || !selectedAssistant || !selectedPhoneNumberId}
+            disabled={isLoading || !localNumber || !selectedAssistant || !twilioPhoneNumber}
           >
             {isLoading ? (
               <>
