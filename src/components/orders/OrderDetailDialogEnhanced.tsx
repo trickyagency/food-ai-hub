@@ -19,6 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible";
+import { 
   User, 
   Phone, 
   Clock, 
@@ -28,12 +33,16 @@ import {
   XCircle,
   ChefHat,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  History,
+  ChevronDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderReceiptPrint } from "./OrderReceiptPrint";
+import { OrderStatusTimeline } from "./OrderStatusTimeline";
 import { Order } from "@/hooks/useOrders";
+import { useOrderHistory } from "@/hooks/useOrderHistory";
 import { toast } from "sonner";
 
 interface OrderDetailDialogEnhancedProps {
@@ -52,7 +61,10 @@ export const OrderDetailDialogEnhanced = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  
+  const { history, loading: historyLoading } = useOrderHistory(order?.id || null);
 
   if (!order) return null;
 
@@ -211,6 +223,31 @@ export const OrderDetailDialogEnhanced = ({
                 <span className="text-primary">${order.total.toFixed(2)}</span>
               </div>
             </div>
+
+            <Separator />
+
+            {/* Order History Timeline */}
+            <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <History className="w-4 h-4" />
+                    Order History
+                    {history.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {history.length}
+                      </Badge>
+                    )}
+                  </h3>
+                  <ChevronDown 
+                    className={`w-4 h-4 text-muted-foreground transition-transform ${historyOpen ? 'rotate-180' : ''}`} 
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-4">
+                <OrderStatusTimeline history={history} loading={historyLoading} />
+              </CollapsibleContent>
+            </Collapsible>
 
             <Separator />
 

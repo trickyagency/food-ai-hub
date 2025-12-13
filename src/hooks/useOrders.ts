@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
+import { logStatusChange } from "@/hooks/useOrderHistory";
 
 export interface OrderItem {
   name: string;
@@ -149,13 +150,15 @@ export const useOrders = (options: UseOrdersOptions = {}) => {
   const updateOrderStatus = useCallback(async (
     orderId: string, 
     newStatus: string,
-    options?: { optimistic?: boolean }
+    options?: { optimistic?: boolean; userId?: string; userEmail?: string }
   ): Promise<boolean> => {
-    const { optimistic = true } = options || {};
+    const { optimistic = true, userId, userEmail } = options || {};
     
     // Store original order for rollback
     const originalOrder = orders.find(o => o.id === orderId);
     if (!originalOrder) return false;
+    
+    const previousStatus = originalOrder.status;
 
     // Optimistic update
     if (optimistic) {
@@ -171,6 +174,9 @@ export const useOrders = (options: UseOrdersOptions = {}) => {
         .eq("id", orderId);
 
       if (updateError) throw updateError;
+
+      // Log status change to history
+      await logStatusChange(orderId, previousStatus, newStatus, userId, userEmail);
 
       // Recalculate stats
       setOrders(prev => {
