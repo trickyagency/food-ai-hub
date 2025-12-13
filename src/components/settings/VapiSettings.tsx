@@ -3,12 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useVapiConnection } from "@/hooks/useVapiConnection";
 import { CheckCircle2, XCircle, Loader2, Phone } from "lucide-react";
+import { InboundCallConfig } from "@/components/dashboard/InboundCallConfig";
 
 const VapiSettings = () => {
   const { testConnection, testing, isConnected } = useVapiConnection();
 
   return (
     <div className="space-y-6">
+      {/* Phone Configuration Section */}
+      <InboundCallConfig />
       <Card className="border-border/50 shadow-sm">
         <CardHeader>
           <div className="flex items-center gap-3">
