@@ -1,233 +1,39 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
-
-// Declare EdgeRuntime for Supabase background tasks
-declare const EdgeRuntime: {
-  waitUntil: (promise: Promise<any>) => void;
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-// Keywords that indicate an order was placed (fallback detection)
-const ORDER_KEYWORDS = [
-  "order confirmed",
-  "order placed",
-  "order received",
-  "placed your order",
-  "confirmed your order",
-  "order is confirmed",
-  "i've placed",
-  "i have placed",
-  "your order has been",
-  "order number",
-  "order total",
-  "thank you for your order",
-  "order will be ready",
-];
+// Idempotency cache to prevent duplicate order processing
+const processedOrders = new Map<string, number>();
+const IDEMPOTENCY_TTL = 5 * 60 * 1000; // 5 minutes
 
-interface OrderItem {
-  name: string;
-  quantity: number;
-  price?: number;
-  modifications?: string;
-}
-
-interface CaptureOrderArgs {
-  customerName?: string;
-  items: OrderItem[];
-  subtotal?: number;
-  tax?: number;
-  total: number;
-  specialInstructions?: string;
-  estimatedTime?: number;
-}
-
-// Function to detect if an order was placed from the call data (fallback)
-function detectOrderFromCall(payload: any): { hasOrder: boolean; orderDetails: any } {
-  const transcript = payload.transcript || payload.call?.transcript || "";
-  const summary = payload.summary || payload.call?.summary || "";
-  const analysis = payload.analysis || payload.call?.analysis || {};
-  
-  const combinedText = `${transcript} ${summary}`.toLowerCase();
-  const hasOrderKeyword = ORDER_KEYWORDS.some(keyword => combinedText.includes(keyword));
-  
-  const structuredOrder = analysis.structuredData?.order || analysis.order || null;
-  
-  let orderDetails: any = {};
-  
-  if (structuredOrder) {
-    orderDetails = {
-      items: structuredOrder.items || [],
-      total: structuredOrder.total || structuredOrder.orderTotal,
-      estimatedTime: structuredOrder.estimatedTime || structuredOrder.prepTime || 30,
-      customerName: structuredOrder.customerName,
-      orderId: structuredOrder.orderId,
-    };
-  } else if (hasOrderKeyword) {
-    orderDetails = {
-      items: [],
-      total: null,
-      estimatedTime: 30,
-      customerName: null,
-      orderId: null,
-    };
-  }
-  
-  const hasOrder = hasOrderKeyword || structuredOrder !== null;
-  
-  console.log("Order detection result:", { hasOrder, hasOrderKeyword, hasStructuredOrder: !!structuredOrder });
-  
-  return { hasOrder, orderDetails };
-}
-
-// Function to send SMS via the twilio-sms edge function
-async function sendOrderConfirmationSMS(
-  supabaseUrl: string,
-  supabaseServiceKey: string,
-  customerNumber: string,
-  orderDetails: any,
-  callId: string
-): Promise<void> {
-  try {
-    console.log("Triggering SMS for order confirmation to:", customerNumber);
-    
-    const response = await fetch(`${supabaseUrl}/functions/v1/twilio-sms`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${supabaseServiceKey}`,
-      },
-      body: JSON.stringify({
-        customerNumber,
-        orderDetails,
-        callId,
-      }),
-    });
-
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error("Failed to send SMS:", result);
-    } else {
-      console.log("SMS sent successfully:", result);
-    }
-  } catch (error) {
-    console.error("Error calling twilio-sms function:", error);
-  }
-}
-
-// Function to store order in database
-async function storeOrder(
-  supabase: any,
-  callId: string,
-  customerNumber: string,
-  orderArgs: CaptureOrderArgs
-): Promise<string | null> {
-  try {
-    const orderId = `ORD-${Date.now().toString(36).toUpperCase()}`;
-    
-    const { data, error } = await supabase
-      .from("orders")
-      .insert({
-        call_id: callId,
-        customer_number: customerNumber,
-        customer_name: orderArgs.customerName || null,
-        items: orderArgs.items,
-        subtotal: orderArgs.subtotal || null,
-        tax: orderArgs.tax || null,
-        total: orderArgs.total,
-        special_instructions: orderArgs.specialInstructions || null,
-        estimated_time: orderArgs.estimatedTime || 30,
-        status: "confirmed",
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error storing order:", error);
-      return null;
-    }
-
-    console.log("Order stored successfully:", data.id);
-    return orderId;
-  } catch (error) {
-    console.error("Error in storeOrder:", error);
-    return null;
-  }
-}
-
-// Handle tool-calls (function calling) from Vapi
-async function handleToolCall(
-  supabase: any,
-  supabaseUrl: string,
-  supabaseServiceKey: string,
-  payload: any
-): Promise<{ result: string; orderId?: string }> {
-  const toolCalls = payload.message?.toolCalls || payload.toolCalls || [];
-  const call = payload.message?.call || payload.call || {};
-  const callId = call.id || "unknown";
-  const customerNumber = call.customer?.number || payload.customer?.number;
-
-  console.log("Processing tool calls:", JSON.stringify(toolCalls, null, 2));
-
-  for (const toolCall of toolCalls) {
-    const functionName = toolCall.function?.name || toolCall.name;
-    const args = toolCall.function?.arguments || toolCall.arguments || {};
-
-    console.log(`Processing function: ${functionName}`, args);
-
-    if (functionName === "capture_order") {
-      // Parse arguments if they're a string
-      const orderArgs: CaptureOrderArgs = typeof args === "string" ? JSON.parse(args) : args;
-
-      console.log("Capture order called with:", JSON.stringify(orderArgs, null, 2));
-
-      if (!customerNumber) {
-        console.error("No customer number available for SMS");
-        return { result: "Order captured but SMS could not be sent - no customer phone number." };
-      }
-
-      // Store order in database
-      const orderId = await storeOrder(supabase, callId, customerNumber, orderArgs);
-
-      // Build order details for SMS
-      const orderDetails = {
-        orderId,
-        customerName: orderArgs.customerName,
-        items: orderArgs.items,
-        subtotal: orderArgs.subtotal,
-        tax: orderArgs.tax,
-        total: orderArgs.total,
-        estimatedTime: orderArgs.estimatedTime || 30,
-        specialInstructions: orderArgs.specialInstructions,
-      };
-
-      // Send SMS immediately (don't wait)
-      EdgeRuntime.waitUntil(
-        sendOrderConfirmationSMS(
-          supabaseUrl,
-          supabaseServiceKey,
-          customerNumber,
-          orderDetails,
-          callId
-        )
-      );
-
-      const itemsSummary = orderArgs.items
-        .map(item => `${item.quantity}x ${item.name}`)
-        .join(", ");
-
-      return {
-        result: `Order confirmed! ${orderArgs.customerName ? `Thank you ${orderArgs.customerName}. ` : ""}Your order for ${itemsSummary} totaling $${orderArgs.total.toFixed(2)} has been placed. Estimated ready time is ${orderArgs.estimatedTime || 30} minutes. A confirmation text has been sent to your phone.`,
-        orderId: orderId || undefined,
-      };
+function cleanupOldEntries() {
+  const now = Date.now();
+  for (const [key, timestamp] of processedOrders.entries()) {
+    if (now - timestamp > IDEMPOTENCY_TTL) {
+      processedOrders.delete(key);
     }
   }
+}
 
-  return { result: "Function not recognized" };
+function validateOrderTotal(items: any[], statedTotal: number): { valid: boolean; calculatedTotal: number } {
+  if (!Array.isArray(items)) return { valid: false, calculatedTotal: 0 };
+  
+  const calculatedTotal = items.reduce((sum, item) => {
+    const price = parseFloat(item.price) || 0;
+    const quantity = parseInt(item.quantity) || 1;
+    return sum + (price * quantity);
+  }, 0);
+  
+  // Allow 1% tolerance for rounding differences
+  const tolerance = Math.max(0.01, statedTotal * 0.01);
+  const valid = Math.abs(calculatedTotal - statedTotal) <= tolerance;
+  
+  return { valid, calculatedTotal };
 }
 
 serve(async (req) => {
@@ -241,84 +47,285 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const payload = await req.json();
-    console.log("Received Vapi webhook event:", JSON.stringify(payload, null, 2));
-
-    const {
-      message,
-      call,
-      phoneNumber,
-      customer,
-      transcript,
-      endedReason,
-      cost,
-      costBreakdown,
-      duration,
-      status,
-    } = payload;
-
-    // Determine event type - check both message.type and direct type
-    const eventType = message?.type || payload.type || "unknown";
-
-    console.log("Event type:", eventType);
-
-    // Handle tool-calls event (function calling)
-    if (eventType === "tool-calls") {
-      console.log("Processing tool-calls event");
+    // Validate webhook secret if configured
+    const webhookSecret = Deno.env.get("VAPI_WEBHOOK_SECRET");
+    if (webhookSecret) {
+      const url = new URL(req.url);
+      const tokenFromQuery = url.searchParams.get("token");
+      const tokenFromHeader = req.headers.get("x-webhook-secret");
       
-      const { result, orderId } = await handleToolCall(
-        supabase,
-        supabaseUrl,
-        supabaseServiceKey,
-        payload
-      );
-
-      // Return the function result to Vapi
-      // Vapi expects a specific response format for tool calls
-      const toolCallId = payload.message?.toolCalls?.[0]?.id || 
-                         payload.toolCalls?.[0]?.id ||
-                         "unknown";
-
-      return new Response(
-        JSON.stringify({
-          results: [
-            {
-              toolCallId,
-              result,
-            },
-          ],
-        }),
-        {
+      if (tokenFromQuery !== webhookSecret && tokenFromHeader !== webhookSecret) {
+        console.error("Invalid webhook secret");
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        }
-      );
+        });
+      }
     }
 
-    // Extract key data for other event types
-    const callId = call?.id || payload.call?.id || "unknown";
-    const assistantId = call?.assistantId || payload.assistantId;
-    const phoneNumberId = phoneNumber?.id || call?.phoneNumberId;
-    const customerNumber = customer?.number || call?.customer?.number;
+    const payload = await req.json();
+    console.log("Received webhook payload:", JSON.stringify(payload, null, 2));
 
-    // Store the event
-    const { error: insertError } = await supabase
-      .from("vapi_call_events")
-      .insert({
-        event_id: payload.id,
-        call_id: callId,
-        event_type: eventType,
-        payload: payload,
-        assistant_id: assistantId,
-        phone_number_id: phoneNumberId,
-        customer_number: customerNumber,
-        transcript_text: transcript || payload.transcript,
-        call_status: status || call?.status,
-        duration: duration,
-        cost: cost,
-        user_id: null,
+    const eventType = payload.message?.type || payload.type || "unknown";
+    const callId = payload.message?.call?.id || payload.call?.id;
+    
+    // Validate required fields
+    if (!callId) {
+      console.error("Missing call ID in payload");
+      return new Response(JSON.stringify({ error: "Missing call ID" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
 
+    // Whitelist allowed event types
+    const allowedEvents = [
+      "status-update", 
+      "transcript", 
+      "end-of-call-report", 
+      "function-call",
+      "assistant-request",
+      "tool-calls"
+    ];
+    
+    if (!allowedEvents.includes(eventType)) {
+      console.log(`Ignoring event type: ${eventType}`);
+      return new Response(JSON.stringify({ success: true, ignored: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const callData = payload.message?.call || payload.call || {};
+    const customerNumber = callData.customer?.number || null;
+    const assistantId = callData.assistantId || callData.assistant?.id || null;
+    const phoneNumberId = callData.phoneNumberId || null;
+
+    // Store call event
+    const { error: eventError } = await supabase.from("vapi_call_events").insert({
+      call_id: callId,
+      event_type: eventType,
+      payload: payload,
+      customer_number: customerNumber,
+      assistant_id: assistantId,
+      phone_number_id: phoneNumberId,
+      call_status: callData.status || null,
+      duration: callData.duration || null,
+      cost: callData.cost || null,
+      transcript_text: payload.message?.transcript || null,
+    });
+
+    if (eventError) {
+      console.error("Error storing call event:", eventError);
+    }
+
+    // Handle function calls for order capture
+    if (eventType === "function-call" || eventType === "tool-calls") {
+      const functionCall = payload.message?.functionCall || payload.functionCall;
+      const toolCalls = payload.message?.toolCalls || payload.toolCalls;
+      
+      let orderData = null;
+      let functionName = "";
+
+      if (functionCall && functionCall.name === "capture_order") {
+        functionName = functionCall.name;
+        orderData = functionCall.parameters;
+      } else if (toolCalls && Array.isArray(toolCalls)) {
+        const orderTool = toolCalls.find((t: any) => 
+          t.function?.name === "capture_order" || t.name === "capture_order"
+        );
+        if (orderTool) {
+          functionName = orderTool.function?.name || orderTool.name;
+          orderData = orderTool.function?.arguments || orderTool.arguments;
+          if (typeof orderData === "string") {
+            try {
+              orderData = JSON.parse(orderData);
+            } catch (e) {
+              console.error("Failed to parse tool arguments:", e);
+            }
+          }
+        }
+      }
+
+      if (orderData && functionName === "capture_order") {
+        console.log("Processing order capture:", orderData);
+        
+        // Idempotency check - prevent duplicate orders
+        cleanupOldEntries();
+        const idempotencyKey = `${callId}_${JSON.stringify(orderData.items || []).slice(0, 100)}`;
+        
+        if (processedOrders.has(idempotencyKey)) {
+          console.log("Duplicate order detected, skipping:", idempotencyKey);
+          return new Response(JSON.stringify({ 
+            success: true, 
+            message: "Order already processed",
+            duplicate: true 
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Validate order data
+        const items = Array.isArray(orderData.items) ? orderData.items : [];
+        const statedTotal = parseFloat(orderData.total) || 0;
+        
+        // Validate total matches items
+        const { valid: totalValid, calculatedTotal } = validateOrderTotal(items, statedTotal);
+        
+        if (!totalValid && items.length > 0) {
+          console.warn(`Order total mismatch: stated=${statedTotal}, calculated=${calculatedTotal}`);
+          // Use calculated total if mismatch is significant
+          orderData.total = calculatedTotal;
+        }
+
+        // Calculate subtotal and tax if not provided
+        const subtotal = parseFloat(orderData.subtotal) || calculatedTotal;
+        const tax = parseFloat(orderData.tax) || (subtotal * 0.0825); // 8.25% default tax
+        const finalTotal = parseFloat(orderData.total) || (subtotal + tax);
+
+        const orderRecord = {
+          call_id: callId,
+          customer_name: orderData.customer_name || callData.customer?.name || null,
+          customer_number: customerNumber || orderData.customer_number,
+          items: items,
+          subtotal: subtotal,
+          tax: tax,
+          total: finalTotal,
+          status: "confirmed",
+          special_instructions: orderData.special_instructions || null,
+          estimated_time: parseInt(orderData.estimated_time) || 30,
+        };
+
+        // Validate required fields
+        if (!orderRecord.customer_number) {
+          console.error("Missing customer number for order");
+          return new Response(JSON.stringify({ 
+            error: "Missing customer number",
+            success: false 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .insert(orderRecord)
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error("Error creating order:", orderError);
+          return new Response(JSON.stringify({ 
+            error: orderError.message,
+            success: false 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Mark as processed for idempotency
+        processedOrders.set(idempotencyKey, Date.now());
+
+        console.log("Order created successfully:", order.id);
+
+        // Send SMS confirmation
+        try {
+          const smsResponse = await fetch(
+            `${supabaseUrl}/functions/v1/twilio-sms`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                to: orderRecord.customer_number,
+                orderId: order.id,
+                customerName: orderRecord.customer_name,
+                items: orderRecord.items,
+                total: orderRecord.total,
+                estimatedTime: orderRecord.estimated_time,
+                callId: callId,
+              }),
+            }
+          );
+
+          const smsResult = await smsResponse.json();
+          console.log("SMS send result:", smsResult);
+          
+          if (!smsResponse.ok) {
+            console.error("SMS send failed:", smsResult);
+            // Don't fail the order creation if SMS fails
+          }
+        } catch (smsError) {
+          console.error("Error sending SMS:", smsError);
+          // Don't fail the order creation if SMS fails
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          orderId: order.id,
+          message: "Order captured successfully"
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Handle end-of-call-report for call data sync
+    if (eventType === "end-of-call-report") {
+      const { error: callError } = await supabase.from("vapi_calls").upsert(
+        {
+          id: callId,
+          status: callData.status || "ended",
+          customer_number: customerNumber,
+          customer_name: callData.customer?.name || null,
+          assistant_id: assistantId,
+          phone_number_id: phoneNumberId,
+          phone_number: callData.phoneNumber?.number || null,
+          type: callData.type || null,
+          duration: callData.duration || null,
+          cost: callData.cost || null,
+          cost_breakdown: callData.costs || null,
+          started_at: callData.startedAt || null,
+          ended_at: callData.endedAt || null,
+          ended_reason: callData.endedReason || null,
+          transcript: payload.message?.transcript || callData.transcript || null,
+          summary: payload.message?.summary || callData.summary || null,
+          recording_url: callData.recordingUrl || null,
+          analysis: payload.message?.analysis || callData.analysis || null,
+          messages: callData.messages || null,
+          synced_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+      if (callError) {
+        console.error("Error syncing call data:", callError);
+      } else {
+        console.log("Call data synced successfully for:", callId);
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Webhook error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message, success: false }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+});
     if (insertError) {
       console.error("Error storing webhook event:", insertError);
       throw insertError;
