@@ -356,7 +356,7 @@ const KnowledgeBaseManager = () => {
               Knowledge Base Assistant
             </CardTitle>
             <CardDescription>
-              This knowledge base is used by the Riley assistant
+              This knowledge base is used by the {assistantName} assistant
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -384,7 +384,7 @@ const KnowledgeBaseManager = () => {
             <p>1. Upload files in the <strong>Database Files</strong> section</p>
             <p>2. Files are automatically synced to Vapi</p>
             <p>3. Add files to the knowledge base using the <strong>Add to KB</strong> button</p>
-            <p>4. All files in the knowledge base are used by the Riley assistant</p>
+            <p>4. All files in the knowledge base are used by the {assistantName} assistant</p>
             <p>5. The assistant will use these files for answering questions</p>
           </CardContent>
         </Card>
