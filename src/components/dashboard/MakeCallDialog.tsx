@@ -10,6 +10,7 @@ import { Phone, Loader2, Check, ChevronsUpDown, Star, Clock } from "lucide-react
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
+import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +125,7 @@ export const MakeCallDialog = () => {
   const [localNumber, setLocalNumber] = useState("");
   const [formattedNumber, setFormattedNumber] = useState("");
   const [selectedAssistant, setSelectedAssistant] = useState("");
+  const [selectedPhoneNumberId, setSelectedPhoneNumberId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
@@ -131,6 +133,7 @@ export const MakeCallDialog = () => {
   const [favoriteCountries, setFavoriteCountries] = useState<string[]>([]);
 
   const { assistants, loading: assistantsLoading } = useVapiAssistants();
+  const { phoneNumbers, loading: phoneNumbersLoading } = useVapiPhoneNumbers();
 
   // Load recent and favorite countries on mount
   useEffect(() => {
@@ -180,7 +183,7 @@ export const MakeCallDialog = () => {
   const handleMakeCall = async () => {
     const fullPhoneNumber = getFullPhoneNumber();
     
-    if (!localNumber || !selectedAssistant) {
+    if (!localNumber || !selectedAssistant || !selectedPhoneNumberId) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -197,14 +200,18 @@ export const MakeCallDialog = () => {
     setPhoneError(null);
     setIsLoading(true);
     try {
-      const fullPhoneNumber = getFullPhoneNumber();
-      console.log("Initiating outbound call...", { phoneNumber: fullPhoneNumber, selectedAssistant });
+      console.log("Initiating outbound call...", { 
+        phoneNumber: fullPhoneNumber, 
+        selectedAssistant, 
+        phoneNumberId: selectedPhoneNumberId 
+      });
 
       const { data, error } = await supabase.functions.invoke("vapi-proxy", {
         body: {
-          endpoint: "/call",
+          endpoint: "/call/phone",
           method: "POST",
           assistantId: selectedAssistant,
+          phoneNumberId: selectedPhoneNumberId,
           customer: {
             number: fullPhoneNumber,
           },
@@ -230,6 +237,7 @@ export const MakeCallDialog = () => {
       setFormattedNumber("");
       setCountryCode(countryCodes[0]);
       setSelectedAssistant("");
+      setSelectedPhoneNumberId("");
     } catch (err) {
       console.error("Error initiating call:", err);
       toast.error("Failed to initiate call");
@@ -433,12 +441,42 @@ export const MakeCallDialog = () => {
             </Select>
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="phone-number">Call From (Your Phone Number) *</Label>
+            <Select value={selectedPhoneNumberId} onValueChange={setSelectedPhoneNumberId} disabled={isLoading || phoneNumbersLoading}>
+              <SelectTrigger>
+                <SelectValue placeholder={phoneNumbersLoading ? "Loading phone numbers..." : "Choose your outbound number"} />
+              </SelectTrigger>
+              <SelectContent>
+                {phoneNumbers.length === 0 && !phoneNumbersLoading ? (
+                  <SelectItem value="none" disabled>
+                    No phone numbers found in Vapi
+                  </SelectItem>
+                ) : (
+                  phoneNumbers.map((pn) => (
+                    <SelectItem key={pn.id} value={pn.id}>
+                      {pn.number} {pn.name ? `(${pn.name})` : ''}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            {phoneNumbers.length === 0 && !phoneNumbersLoading && (
+              <p className="text-xs text-muted-foreground">
+                Import your Twilio number in Vapi Dashboard → Phone Numbers
+              </p>
+            )}
+          </div>
+
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleMakeCall} disabled={isLoading || !localNumber || !selectedAssistant}>
+          <Button 
+            onClick={handleMakeCall} 
+            disabled={isLoading || !localNumber || !selectedAssistant || !selectedPhoneNumberId}
+          >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
