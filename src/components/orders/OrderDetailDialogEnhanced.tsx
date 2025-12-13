@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -52,7 +52,7 @@ export const OrderDetailDialogEnhanced = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   if (!order) return null;
 
@@ -246,7 +246,7 @@ export const OrderDetailDialogEnhanced = ({
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setShowPrintDialog(true)}>
+              <Button variant="outline" onClick={() => window.print()}>
                 <Printer className="w-4 h-4 mr-2" />
                 Print Receipt
               </Button>
@@ -282,12 +282,8 @@ export const OrderDetailDialogEnhanced = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Print Dialog */}
-      <OrderReceiptPrint
-        order={order}
-        open={showPrintDialog}
-        onOpenChange={setShowPrintDialog}
-      />
+      {/* Hidden Print Content */}
+      <OrderReceiptPrint ref={printRef} order={order as any} />
     </>
   );
 };

@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import DateRangePicker from "@/components/dashboard/DateRangePicker";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderDetailDialogEnhanced } from "./OrderDetailDialogEnhanced";
 import { Order } from "@/hooks/useOrders";

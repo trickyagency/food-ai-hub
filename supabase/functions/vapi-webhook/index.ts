@@ -315,71 +315,11 @@ serve(async (req) => {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Webhook error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: error.message, success: false }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
-  }
-});
-    if (insertError) {
-      console.error("Error storing webhook event:", insertError);
-      throw insertError;
-    }
-
-    console.log(`Successfully stored ${eventType} event for call ${callId}`);
-
-    // Check if this is an end-of-call-report and detect orders (fallback method)
-    if (eventType === "end-of-call-report" && customerNumber) {
-      console.log("Processing end-of-call-report for potential order confirmation (fallback)");
-      
-      // Check if order was already captured via function calling
-      const { data: existingOrder } = await supabase
-        .from("orders")
-        .select("id")
-        .eq("call_id", callId)
-        .maybeSingle();
-
-      if (existingOrder) {
-        console.log("Order already captured via function calling, skipping fallback detection");
-      } else {
-        const { hasOrder, orderDetails } = detectOrderFromCall(payload);
-        
-        if (hasOrder) {
-          console.log("Order detected via fallback! Sending SMS confirmation...");
-          
-          EdgeRuntime.waitUntil(
-            sendOrderConfirmationSMS(
-              supabaseUrl,
-              supabaseServiceKey,
-              customerNumber,
-              orderDetails,
-              callId
-            )
-          );
-        } else {
-          console.log("No order detected in this call");
-        }
-      }
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, message: "Webhook processed" }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error("Error processing webhook:", error);
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Unknown error",
-      }),
+      JSON.stringify({ error: errorMessage, success: false }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
