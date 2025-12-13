@@ -1,73 +1,103 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { OrderAnalytics } from "@/components/orders/OrderAnalytics";
-import { OrdersTable } from "@/components/orders/OrdersTable";
-import { OrderExport } from "@/components/orders/OrderExport";
-import { ShoppingCart } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { Json } from "@/integrations/supabase/types";
-
-interface Order {
-  id: string;
-  customer_name: string | null;
-  customer_number: string;
-  items: Json;
-  subtotal: number | null;
-  tax: number | null;
-  total: number;
-  status: string | null;
-  special_instructions: string | null;
-  estimated_time: number | null;
-  call_id: string;
-  created_at: string | null;
-  updated_at: string | null;
-}
+import { OrderAnalyticsEnhanced } from "@/components/orders/OrderAnalyticsEnhanced";
+import { OrdersTableEnhanced } from "@/components/orders/OrdersTableEnhanced";
+import { OrderExportEnhanced } from "@/components/orders/OrderExportEnhanced";
+import { NewOrderNotifications } from "@/components/orders/NewOrderNotifications";
+import { ShoppingCart, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useOrders } from "@/hooks/useOrders";
+import { DateRange } from "react-day-picker";
 
 const Orders = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { 
+    orders, 
+    stats, 
+    loading, 
+    lastUpdated, 
+    refreshOrders, 
+    updateOrderStatus 
+  } = useOrders({ enableRealtime: true });
 
-  useEffect(() => {
-    const fetchOrders = async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (data) setOrders(data);
-    };
-    fetchOrders();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-    const channel = supabase
-      .channel("orders-export")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, fetchOrders)
-      .subscribe();
+  // Compute filtered orders for export
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        const matchesSearch = 
+          (order.customer_name?.toLowerCase().includes(searchLower)) ||
+          order.customer_number.includes(searchQuery) ||
+          order.id.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+      if (statusFilter !== "all" && order.status !== statusFilter) {
+        return false;
+      }
+
+      if (dateRange?.from && order.created_at) {
+        const orderDate = new Date(order.created_at);
+        if (orderDate < dateRange.from) return false;
+        if (dateRange.to) {
+          const endOfDay = new Date(dateRange.to);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (orderDate > endOfDay) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [orders, searchQuery, statusFilter, dateRange]);
 
   return (
     <DashboardLayout>
+      <NewOrderNotifications />
+      
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingCart className="h-6 w-6 text-primary" />
-              <h1 className="text-2xl font-bold text-foreground">Orders Management</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <ShoppingCart className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Orders Management</h1>
+                <p className="text-sm text-muted-foreground">
+                  View, track, and manage all orders placed through voice calls
+                </p>
+              </div>
             </div>
-            <p className="text-muted-foreground">
-              View, track, and manage all orders placed through voice calls
-            </p>
           </div>
-          <OrderExport orders={orders} />
+          <div className="flex items-center gap-2">
+            {stats && stats.todayOrders > 0 && (
+              <Badge variant="secondary" className="gap-1">
+                {stats.todayOrders} today
+              </Badge>
+            )}
+            <OrderExportEnhanced 
+              orders={orders} 
+              filteredOrders={filteredOrders.length !== orders.length ? filteredOrders : undefined} 
+            />
+          </div>
         </div>
 
         {/* Analytics Section */}
-        <OrderAnalytics />
+        <OrderAnalyticsEnhanced stats={stats} loading={loading} />
 
         {/* Orders Table */}
-        <OrdersTable />
+        <OrdersTableEnhanced
+          orders={orders}
+          loading={loading}
+          onStatusUpdate={updateOrderStatus}
+          onRefresh={refreshOrders}
+          lastUpdated={lastUpdated}
+        />
       </div>
     </DashboardLayout>
   );
