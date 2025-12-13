@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { OrderAnalyticsEnhanced } from "@/components/orders/OrderAnalyticsEnhanced";
 import { OrdersTableEnhanced } from "@/components/orders/OrdersTableEnhanced";
@@ -8,9 +8,11 @@ import { ShoppingCart, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useOrders } from "@/hooks/useOrders";
+import { useAuth } from "@/contexts/AuthContext";
 import { DateRange } from "react-day-picker";
 
 const Orders = () => {
+  const { user } = useAuth();
   const { 
     orders, 
     stats, 
@@ -23,6 +25,14 @@ const Orders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  // Wrap updateOrderStatus to include user info for history logging
+  const handleStatusUpdate = useCallback(async (orderId: string, status: string) => {
+    return updateOrderStatus(orderId, status, {
+      userId: user?.id,
+      userEmail: user?.email
+    });
+  }, [updateOrderStatus, user]);
 
   // Compute filtered orders for export
   const filteredOrders = useMemo(() => {
@@ -94,7 +104,7 @@ const Orders = () => {
         <OrdersTableEnhanced
           orders={orders}
           loading={loading}
-          onStatusUpdate={updateOrderStatus}
+          onStatusUpdate={handleStatusUpdate}
           onRefresh={refreshOrders}
           lastUpdated={lastUpdated}
         />

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { motion, PanInfo, useAnimation } from "framer-motion";
 import { TableRow, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { format } from "date-fns";
 interface SwipeableCallRowProps {
   call: VapiCall;
   onViewDetails: (call: VapiCall) => void;
-  getStatusBadge: (status: string, endedReason?: string) => JSX.Element;
+  getStatusBadge: (status: string, endedReason?: string) => React.ReactNode;
   getCallTypeLabel: (type: string) => string;
 }
 
