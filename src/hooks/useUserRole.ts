@@ -1,40 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export type UserRole = "owner" | "admin" | "manager" | "staff" | "viewer" | null;
 
 export const useUserRole = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading, isInitialized, refreshSession } = useAuth();
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchRole = async () => {
-      if (!user) {
-        setRole(null);
-        setLoading(false);
-        return;
-      }
+  const fetchRole = useCallback(async (retryCount = 0) => {
+    if (!user) {
+      setRole(null);
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-        
-        setRole(data?.role as UserRole || null);
-      } catch (error) {
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+      
+      if (error) {
+        // Check for 401/JWT errors and retry after refresh
+        if ((error.message?.includes('JWT') || error.code === 'PGRST301') && retryCount < 1) {
+          console.log('JWT error fetching role, attempting session refresh...');
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            // Retry once after successful refresh
+            return fetchRole(retryCount + 1);
+          }
+        }
         console.error("Failed to fetch user role:", error);
         setRole(null);
-      } finally {
-        setLoading(false);
+      } else {
+        setRole(data?.role as UserRole || null);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch user role:", error);
+      setRole(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, refreshSession]);
 
+  useEffect(() => {
+    // Wait for auth to be fully initialized before fetching role
+    if (!isInitialized || authLoading) {
+      return;
+    }
+
+    setLoading(true);
     fetchRole();
-  }, [user]);
+  }, [user, isInitialized, authLoading, fetchRole]);
 
   const hasPermission = (requiredRoles: UserRole[]) => {
     return role && requiredRoles.includes(role);
@@ -55,7 +75,7 @@ export const useUserRole = () => {
 
   return {
     role,
-    loading,
+    loading: loading || authLoading || !isInitialized,
     hasPermission,
     canManageUsers,
     canAssignRoles,
