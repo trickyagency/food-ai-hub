@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Table, 
   TableBody, 
@@ -18,6 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   Search, 
@@ -29,7 +40,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Clock,
-  AlertCircle
+  AlertCircle,
+  CheckSquare,
+  X
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -37,6 +50,7 @@ import DateRangePicker from "@/components/dashboard/DateRangePicker";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderDetailDialogEnhanced } from "./OrderDetailDialogEnhanced";
 import { Order } from "@/hooks/useOrders";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrdersTableEnhancedProps {
   orders: Order[];
@@ -48,6 +62,13 @@ interface OrdersTableEnhancedProps {
 
 const ITEMS_PER_PAGE = 10;
 
+const STATUS_OPTIONS = [
+  { value: "confirmed", label: "Confirmed" },
+  { value: "preparing", label: "Preparing" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
 export const OrdersTableEnhanced = ({ 
   orders, 
   loading, 
@@ -55,6 +76,7 @@ export const OrdersTableEnhanced = ({
   onRefresh,
   lastUpdated 
 }: OrdersTableEnhancedProps) => {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -64,6 +86,12 @@ export const OrdersTableEnhanced = ({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Bulk selection state
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("preparing");
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -72,6 +100,11 @@ export const OrdersTableEnhanced = ({
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedOrders(new Set());
+  }, [debouncedSearch, statusFilter, dateRange]);
 
   // Filter orders
   const filteredOrders = useMemo(() => {
@@ -137,6 +170,77 @@ export const OrdersTableEnhanced = ({
     
     return pages;
   }, [totalPages, currentPage]);
+
+  // Selection handlers
+  const isAllSelected = paginatedOrders.length > 0 && paginatedOrders.every(o => selectedOrders.has(o.id));
+  const isSomeSelected = paginatedOrders.some(o => selectedOrders.has(o.id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      // Deselect all on current page
+      const newSelected = new Set(selectedOrders);
+      paginatedOrders.forEach(o => newSelected.delete(o.id));
+      setSelectedOrders(newSelected);
+    } else {
+      // Select all on current page
+      const newSelected = new Set(selectedOrders);
+      paginatedOrders.forEach(o => newSelected.add(o.id));
+      setSelectedOrders(newSelected);
+    }
+  };
+
+  const toggleSelectOrder = (orderId: string) => {
+    const newSelected = new Set(selectedOrders);
+    if (newSelected.has(orderId)) {
+      newSelected.delete(orderId);
+    } else {
+      newSelected.add(orderId);
+    }
+    setSelectedOrders(newSelected);
+  };
+
+  const clearSelection = () => {
+    setSelectedOrders(new Set());
+  };
+
+  // Bulk update handler
+  const handleBulkUpdate = async () => {
+    setShowBulkConfirm(false);
+    setIsBulkUpdating(true);
+
+    const orderIds = Array.from(selectedOrders);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const orderId of orderIds) {
+      try {
+        const success = await onStatusUpdate(orderId, bulkTargetStatus);
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        failCount++;
+      }
+    }
+
+    setIsBulkUpdating(false);
+    setSelectedOrders(new Set());
+
+    if (failCount === 0) {
+      toast({
+        title: "Bulk Update Complete",
+        description: `Successfully updated ${successCount} order${successCount !== 1 ? 's' : ''} to "${bulkTargetStatus}"`,
+      });
+    } else {
+      toast({
+        title: "Bulk Update Partially Complete",
+        description: `Updated ${successCount} order${successCount !== 1 ? 's' : ''}, ${failCount} failed`,
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -259,6 +363,39 @@ export const OrdersTableEnhanced = ({
             )}
           </div>
 
+          {/* Bulk Action Bar */}
+          {selectedOrders.size > 0 && (
+            <div className="flex items-center gap-3 p-3 mb-4 bg-primary/5 border border-primary/20 rounded-lg">
+              <CheckSquare className="w-5 h-5 text-primary" />
+              <span className="font-medium text-foreground">
+                {selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex-1" />
+              <Select value={bulkTargetStatus} onValueChange={setBulkTargetStatus}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Set status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button 
+                size="sm" 
+                onClick={() => setShowBulkConfirm(true)}
+                disabled={isBulkUpdating}
+              >
+                {isBulkUpdating ? "Updating..." : "Update Status"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+
           {/* Table */}
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
@@ -277,6 +414,14 @@ export const OrdersTableEnhanced = ({
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={isAllSelected}
+                          onCheckedChange={toggleSelectAll}
+                          aria-label="Select all orders on this page"
+                          className={isSomeSelected && !isAllSelected ? "opacity-50" : ""}
+                        />
+                      </TableHead>
                       <TableHead className="font-semibold">Customer</TableHead>
                       <TableHead className="font-semibold">Items</TableHead>
                       <TableHead className="font-semibold text-right">Total</TableHead>
@@ -289,8 +434,17 @@ export const OrdersTableEnhanced = ({
                     {paginatedOrders.map((order) => (
                       <TableRow 
                         key={order.id} 
-                        className={`hover:bg-muted/30 transition-colors ${isOrderUrgent(order) ? 'bg-warning/5' : ''}`}
+                        className={`hover:bg-muted/30 transition-colors ${
+                          selectedOrders.has(order.id) ? 'bg-primary/5' : ''
+                        } ${isOrderUrgent(order) ? 'bg-warning/5' : ''}`}
                       >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedOrders.has(order.id)}
+                            onCheckedChange={() => toggleSelectOrder(order.id)}
+                            aria-label={`Select order ${order.id}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-start gap-2">
                             {isOrderUrgent(order) && (
@@ -426,6 +580,38 @@ export const OrdersTableEnhanced = ({
         onOpenChange={setIsDetailOpen}
         onStatusUpdate={onStatusUpdate}
       />
+
+      {/* Bulk Update Confirmation Dialog */}
+      <AlertDialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Update {selectedOrders.size} Order{selectedOrders.size !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkTargetStatus === 'cancelled' ? (
+                <span className="text-destructive">
+                  Warning: You are about to cancel {selectedOrders.size} order{selectedOrders.size !== 1 ? 's' : ''}. 
+                  This action cannot be easily undone.
+                </span>
+              ) : (
+                <>
+                  This will update all selected orders to <strong className="text-foreground">{bulkTargetStatus}</strong> status.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkUpdate}
+              className={bulkTargetStatus === 'cancelled' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              Update {selectedOrders.size} Order{selectedOrders.size !== 1 ? 's' : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
