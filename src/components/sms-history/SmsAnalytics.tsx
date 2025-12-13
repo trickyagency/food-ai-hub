@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageSquare, CheckCircle, XCircle, Clock, TrendingUp } from "lucide-react";
+import { MessageSquare, CheckCircle, XCircle, Clock, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SmsStats {
@@ -9,10 +9,11 @@ interface SmsStats {
   sent: number;
   failed: number;
   pending: number;
+  uniqueCustomers: number;
 }
 
 const SmsAnalytics = () => {
-  const [stats, setStats] = useState<SmsStats>({ total: 0, sent: 0, failed: 0, pending: 0 });
+  const [stats, setStats] = useState<SmsStats>({ total: 0, sent: 0, failed: 0, pending: 0, uniqueCustomers: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,15 +24,19 @@ const SmsAnalytics = () => {
     try {
       const { data, error } = await supabase
         .from("sms_logs")
-        .select("status");
+        .select("status, customer_number");
 
       if (error) throw error;
+
+      // Count unique customers
+      const uniqueCustomers = new Set(data?.map(s => s.customer_number) || []).size;
 
       const stats = {
         total: data?.length || 0,
         sent: data?.filter(s => s.status === "sent").length || 0,
         failed: data?.filter(s => s.status === "failed").length || 0,
         pending: data?.filter(s => s.status === "pending").length || 0,
+        uniqueCustomers,
       };
 
       setStats(stats);
@@ -44,6 +49,7 @@ const SmsAnalytics = () => {
 
   const successRate = stats.total > 0 ? ((stats.sent / stats.total) * 100).toFixed(1) : "0";
   const failureRate = stats.total > 0 ? ((stats.failed / stats.total) * 100).toFixed(1) : "0";
+  const avgPerCustomer = stats.uniqueCustomers > 0 ? (stats.total / stats.uniqueCustomers).toFixed(1) : "0";
 
   const statCards = [
     {
@@ -70,11 +76,12 @@ const SmsAnalytics = () => {
       bgColor: "bg-destructive/10",
     },
     {
-      label: "Pending",
-      value: stats.pending,
-      icon: Clock,
-      color: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10",
+      label: "Conversations",
+      value: stats.uniqueCustomers,
+      subtext: `${avgPerCustomer} avg messages/customer`,
+      icon: Users,
+      color: "text-primary",
+      bgColor: "bg-primary/10",
     },
   ];
 
