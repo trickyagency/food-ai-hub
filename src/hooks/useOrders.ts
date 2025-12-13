@@ -22,6 +22,7 @@ export interface Order {
   special_instructions: string | null;
   estimated_time: number | null;
   call_id: string;
+  user_id: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
