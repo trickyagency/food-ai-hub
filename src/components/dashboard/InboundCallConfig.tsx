@@ -1,14 +1,26 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
 import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
-import { Phone, Bot, MessageSquare, PhoneIncoming, PhoneOutgoing, CheckCircle2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Phone, Bot, MessageSquare, PhoneIncoming, PhoneOutgoing, CheckCircle2, Loader2, Copy } from "lucide-react";
 
 export const InboundCallConfig = () => {
   const { assistants, loading: assistantsLoading } = useVapiAssistants();
   const { twilioPhoneNumber, loading: phoneLoading } = useVapiPhoneNumbers();
+  const { toast } = useToast();
 
   const loading = assistantsLoading || phoneLoading;
+
+  const copyPhoneNumber = () => {
+    const number = twilioPhoneNumber?.number || "+14697503114";
+    navigator.clipboard.writeText(number);
+    toast({
+      title: "Copied!",
+      description: "Phone number copied to clipboard",
+    });
+  };
 
   // Get the primary assistant (the one linked to the phone number)
   const linkedAssistant = assistants.find(a => a.id === twilioPhoneNumber?.assistantId) || assistants[0];
@@ -48,9 +60,19 @@ export const InboundCallConfig = () => {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-sm font-medium text-muted-foreground">Business Phone Number</p>
-              <p className="text-2xl font-bold tracking-wide">
-                {twilioPhoneNumber?.number || "+14697503114"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-2xl font-bold tracking-wide">
+                  {twilioPhoneNumber?.number || "+14697503114"}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={copyPhoneNumber}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {twilioPhoneNumber?.name || "Food Business"}
               </p>
