@@ -38,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -47,16 +48,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTimeout(() => logAuditEvent('login', { method: 'email' }), 0);
         } else if (event === 'SIGNED_OUT') {
           setTimeout(() => logAuditEvent('logout'), 0);
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('Token refreshed successfully');
         }
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Check for existing session and refresh if needed
+    const initSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error);
+          // Clear invalid session
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+        } else if (session) {
+          // Check if token is close to expiring and refresh
+          const expiresAt = session.expires_at;
+          const now = Math.floor(Date.now() / 1000);
+          const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
+          
+          if (timeUntilExpiry < 60) {
+            // Token expires in less than 60 seconds, refresh it
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+              console.error('Failed to refresh session:', refreshError);
+              await supabase.auth.signOut();
+              setSession(null);
+              setUser(null);
+            } else {
+              setSession(refreshData.session);
+              setUser(refreshData.session?.user ?? null);
+            }
+          } else {
+            setSession(session);
+            setUser(session?.user ?? null);
+          }
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initSession();
 
     return () => subscription.unsubscribe();
   }, []);
