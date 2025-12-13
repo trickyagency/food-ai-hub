@@ -1,8 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { PageTransition } from "@/components/PageTransition";
 import { MessageSquare, TrendingUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SmsAnalytics from "@/components/sms-history/SmsAnalytics";
 import SmsHistoryTable from "@/components/sms-history/SmsHistoryTable";
+import SmsConversationList from "@/components/sms-history/SmsConversationList";
 
 const SmsHistory = () => {
   return (
@@ -31,14 +33,26 @@ const SmsHistory = () => {
             <SmsAnalytics />
           </div>
 
-          {/* History Table */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-primary" />
-              <h2 className="text-2xl font-bold text-foreground">Message History</h2>
-            </div>
-            <SmsHistoryTable />
-          </div>
+          {/* Tabs for Conversations and All Messages */}
+          <Tabs defaultValue="conversations" className="space-y-4">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="conversations" className="gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Conversations
+              </TabsTrigger>
+              <TabsTrigger value="all-messages" className="gap-2">
+                All Messages
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="conversations" className="space-y-4">
+              <SmsConversationList />
+            </TabsContent>
+
+            <TabsContent value="all-messages" className="space-y-4">
+              <SmsHistoryTable />
+            </TabsContent>
+          </Tabs>
         </div>
       </PageTransition>
     </DashboardLayout>
