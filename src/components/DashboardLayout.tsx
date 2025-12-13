@@ -4,10 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { NavLink } from "./NavLink";
 import { ThemeToggle } from "./ThemeToggle";
-import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, BookOpen, MessageSquare, ShoppingCart } from "lucide-react";
+import { LayoutDashboard, Upload, LogOut, Settings, LucideIcon, Menu, BookOpen, MessageSquare, ShoppingCart, Loader2 } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ interface NavItem {
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const { role, canManageFiles, canManageKnowledgeBase, canViewReports } = useUserRole();
+  const { role, loading, canManageFiles, canManageKnowledgeBase, canViewReports } = useUserRole();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const allNavItems: NavItem[] = [
@@ -64,21 +65,33 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </div>
 
       <nav className="flex-1 p-3 sm:p-4 space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm text-foreground hover:bg-muted transition-all duration-200"
-              activeClassName="bg-primary text-primary-foreground font-semibold shadow-md"
-            >
-              <Icon className="w-5 h-5 flex-shrink-0" />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
+        {loading ? (
+          // Show skeleton while role is loading
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3">
+                <Skeleton className="w-5 h-5 rounded" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </>
+        ) : (
+          navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-sm text-foreground hover:bg-muted transition-all duration-200"
+                activeClassName="bg-primary text-primary-foreground font-semibold shadow-md"
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })
+        )}
       </nav>
 
       <div className="p-3 sm:p-4 border-t border-border space-y-3">
