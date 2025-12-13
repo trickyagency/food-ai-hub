@@ -18,6 +18,7 @@ import DetailedAnalytics from "@/components/dashboard/DetailedAnalytics";
 import { MakeCallDialog } from "@/components/dashboard/MakeCallDialog";
 import { AssistantsWidget } from "@/components/dashboard/AssistantsWidget";
 import { AccountOverviewWidget } from "@/components/dashboard/AccountOverviewWidget";
+import { InboundCallConfig } from "@/components/dashboard/InboundCallConfig";
 import { TodayOrdersWidget } from "@/components/dashboard/widgets/TodayOrdersWidget";
 import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicator";
 import { ExportAnalytics } from "@/components/dashboard/ExportAnalytics";
@@ -192,6 +193,9 @@ const Index = () => {
                     )}
 
                     <TabsContent value="account" className="space-y-6 sm:space-y-8">
+                      {/* Phone Configuration */}
+                      <InboundCallConfig />
+                      
                       {/* Account Overview */}
                       <AccountOverviewWidget analytics={allAnalytics} />
                       
