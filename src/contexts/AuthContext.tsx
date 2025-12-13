@@ -35,13 +35,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let initialAuthDone = false;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        
+        // Only update state after initial auth is done to avoid race conditions
+        if (initialAuthDone) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          // If signed out, clear loading
+          if (event === 'SIGNED_OUT') {
+            setLoading(false);
+          }
+        }
         
         // Log authentication events
         if (event === 'SIGNED_IN') {
@@ -50,6 +60,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTimeout(() => logAuditEvent('logout'), 0);
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('Token refreshed successfully');
+          // Update session with new token
+          if (session) {
+            setSession(session);
+            setUser(session?.user ?? null);
+          }
         }
       }
     );
@@ -125,7 +140,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    initSession();
+    initSession().then(() => {
+      initialAuthDone = true;
+    });
 
     return () => subscription.unsubscribe();
   }, []);
