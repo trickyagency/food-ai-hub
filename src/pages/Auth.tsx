@@ -8,12 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [isResetPassword, setIsResetPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signup, resetPassword, isAuthenticated } = useAuth();
+  const { login, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,13 +35,11 @@ const Auth = () => {
           toast.error(result.error || "An error occurred");
         }
       } else {
-        const result = isLogin ? await login(email, password) : await signup(email, password);
+        const result = await login(email, password);
         
         if (result.success) {
-          toast.success(isLogin ? "Logged in successfully!" : "Account created! Check your email to verify.");
-          if (isLogin) {
-            navigate("/");
-          }
+          toast.success("Logged in successfully!");
+          navigate("/");
         } else {
           toast.error(result.error || "An error occurred");
         }
@@ -60,14 +57,12 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">
-            {isResetPassword ? "Reset Password" : (isLogin ? "Welcome back" : "Create an account")}
+            {isResetPassword ? "Reset Password" : "Welcome back"}
           </CardTitle>
           <CardDescription>
             {isResetPassword 
               ? "Enter your email to receive a password reset link"
-              : (isLogin 
-                  ? "Sign in to VOICE AI Smartflow Automation" 
-                  : "Sign up to get started with VOICE AI Smartflow Automation")}
+              : "Sign in to VOICE AI Smartflow Automation"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -107,12 +102,12 @@ const Auth = () => {
               className="w-full" 
               disabled={isLoading}
             >
-              {isLoading ? "Loading..." : (isResetPassword ? "Send Reset Link" : (isLogin ? "Sign In" : "Sign Up"))}
+              {isLoading ? "Loading..." : (isResetPassword ? "Send Reset Link" : "Sign In")}
             </Button>
           </form>
 
           <div className="mt-4 text-center space-y-2">
-            {!isResetPassword && isLogin && (
+            {!isResetPassword && (
               <Button
                 type="button"
                 variant="link"
@@ -123,19 +118,16 @@ const Auth = () => {
               </Button>
             )}
             
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setIsResetPassword(false);
-                setIsLogin(!isLogin);
-              }}
-              disabled={isLoading}
-            >
-              {isResetPassword 
-                ? "Back to sign in" 
-                : (isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in")}
-            </Button>
+            {isResetPassword && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsResetPassword(false)}
+                disabled={isLoading}
+              >
+                Back to sign in
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
