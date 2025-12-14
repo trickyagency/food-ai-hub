@@ -9,6 +9,7 @@ interface AuthContextType {
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  completeAccountSetup: (password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
   enroll2FA: () => Promise<{ success: boolean; data?: any; error?: string }>;
   verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
   unenroll2FA: () => Promise<{ success: boolean; error?: string }>;
@@ -253,6 +254,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const completeAccountSetup = async (password: string, fullName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!user) {
+        return { success: false, error: 'No user session found' };
+      }
+
+      // Update password and user metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        password,
+        data: { full_name: fullName }
+      });
+
+      if (authError) {
+        return { success: false, error: authError.message };
+      }
+
+      // Update profiles table with full name
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ full_name: fullName })
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('Failed to update profile:', profileError);
+        // Don't fail the whole operation if profile update fails
+      }
+
+      await logAuditEvent('account_setup_completed', { email: user.email });
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Account setup failed' };
+    }
+  };
+
   const enroll2FA = async (): Promise<{ success: boolean; data?: any; error?: string }> => {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
@@ -324,6 +359,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signup,
         logout,
         resetPassword,
+        completeAccountSetup,
         enroll2FA,
         verify2FA,
         unenroll2FA,
