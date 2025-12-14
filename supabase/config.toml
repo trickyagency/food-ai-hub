@@ -26,3 +26,6 @@ verify_jwt = true
 
 [functions.twilio-sms]
 verify_jwt = true
+
+[functions.invite-user]
+verify_jwt = true

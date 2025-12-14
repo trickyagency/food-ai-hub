@@ -227,46 +227,26 @@ const UserManagement = () => {
 
     setIsAddingUser(true);
     try {
-      // Create user with a random temporary password they won't use
-      const tempPassword = Math.random().toString(36).slice(-16) + Math.random().toString(36).slice(-16);
-      
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: tempPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            setup_required: true
-          }
-        }
+      // Call edge function to invite user via Admin API
+      const { data, error } = await invokeWithRetry('invite-user', {
+        body: { 
+          email: newUserEmail, 
+          role: newUserRole 
+        },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("User creation failed");
-
-      // Assign role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([{ user_id: authData.user.id, role: newUserRole as any }]);
-
-      if (roleError) throw roleError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       // Log the user creation
-      await auditLog.userCreated(authData.user.id, newUserEmail);
+      if (data?.userId) {
+        await auditLog.userCreated(data.userId, newUserEmail);
+      }
 
-      // Send password reset email for account setup
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        newUserEmail,
-        {
-          redirectTo: `${window.location.origin}/auth`,
-        }
-      );
-
-      if (resetError) {
-        console.error("Failed to send setup email:", resetError);
-        toast.warning("User created but setup email failed. Please resend manually.");
+      if (data?.warning) {
+        toast.warning(data.warning);
       } else {
-        toast.success("User created! Setup email sent to " + newUserEmail);
+        toast.success("User invited! Setup email sent to " + newUserEmail);
       }
 
       setIsAddUserOpen(false);
