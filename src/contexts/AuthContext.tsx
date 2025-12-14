@@ -173,6 +173,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
+      // Check if an owner already exists - if so, block public signup
+      const { data: existingOwner, error: checkError } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('role', 'owner')
+        .limit(1);
+      
+      if (checkError) {
+        console.error('Error checking for existing owner:', checkError);
+        return { success: false, error: 'Unable to verify registration status. Please try again.' };
+      }
+      
+      if (existingOwner && existingOwner.length > 0) {
+        // Owner exists - block public signup
+        return { 
+          success: false, 
+          error: 'Public registration is disabled. Please contact your administrator for access.' 
+        };
+      }
+      
+      // No owner exists - allow signup (first user becomes owner via database trigger)
       const redirectUrl = `${window.location.origin}/`;
       const { error } = await supabase.auth.signUp({
         email,
