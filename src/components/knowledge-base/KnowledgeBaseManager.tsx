@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,7 @@ const KnowledgeBaseManager = () => {
 
       // Fetch Riley assistant details from Vapi
       try {
-        const { data: assistantData, error: assistantError } = await supabase.functions.invoke("vapi-proxy", {
+        const { data: assistantData, error: assistantError } = await invokeWithRetry("vapi-proxy", {
           body: {
             endpoint: `/assistant/${RILEY_ASSISTANT_ID}`,
             method: "GET",
@@ -113,7 +114,7 @@ const KnowledgeBaseManager = () => {
 
       console.log("Adding file to KB for Riley assistant:", { fileId, updatedFileIds, assistantId: RILEY_ASSISTANT_ID });
 
-      const { data, error } = await supabase.functions.invoke("vapi-kb-sync", {
+      const { data, error } = await invokeWithRetry("vapi-kb-sync", {
         body: {
           knowledgeBaseName: "Global Knowledge Base",
           fileIds: updatedFileIds,
@@ -154,7 +155,7 @@ const KnowledgeBaseManager = () => {
     try {
       setSyncing(true);
       
-      const { error } = await supabase.functions.invoke("vapi-kb-unsync", {
+      const { error } = await invokeWithRetry("vapi-kb-unsync", {
         body: {
           knowledgeBaseId: knowledgeBase?.id,
           fileId: fileToRemove.id,

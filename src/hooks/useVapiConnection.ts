@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 
 export const useVapiConnection = () => {
   const [testing, setTesting] = useState(false);
@@ -11,7 +11,7 @@ export const useVapiConnection = () => {
     try {
       console.log("Testing Vapi connection...");
       
-      const { data, error } = await supabase.functions.invoke("vapi-proxy", {
+      const { data, error } = await invokeWithRetry("vapi-proxy", {
         body: { endpoint: "/call?limit=1" },
       });
 

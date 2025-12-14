@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Database } from "lucide-react";
 import { format } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 
 interface VapiConnectionStatusProps {
   onRefresh: () => void;
@@ -18,7 +18,7 @@ const VapiConnectionStatus = ({ onRefresh, lastUpdated, isRefreshing }: VapiConn
   const handleForceSync = async () => {
     setIsSyncing(true);
     try {
-      const { error } = await supabase.functions.invoke('vapi-sync');
+      const { error } = await invokeWithRetry('vapi-sync');
       if (error) throw error;
       toast.success("Sync completed - call durations recalculated");
       onRefresh();

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -200,19 +201,9 @@ const UserManagement = () => {
       const deletedUser = users.find(u => u.id === userId);
       const email = deletedUser?.email || "unknown";
 
-      // Get the current session token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Not authenticated");
-        return;
-      }
-
-      // Call edge function to delete user
-      const { data, error } = await supabase.functions.invoke('delete-user', {
+      // Call edge function to delete user with retry on 401
+      const { data, error } = await invokeWithRetry('delete-user', {
         body: { userId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
       });
 
       if (error) throw error;

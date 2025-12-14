@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 
 export interface CostBreakdown {
   transport: number;
@@ -129,9 +130,9 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
         setLastUpdated(new Date());
         setLoading(false);
 
-        // Trigger background sync
+        // Trigger background sync with retry
         console.log("Triggering background sync...");
-        supabase.functions.invoke("vapi-sync").catch(err => {
+        invokeWithRetry("vapi-sync").catch(err => {
           console.error("Background sync failed:", err);
         });
 
@@ -140,7 +141,7 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
 
       console.log("No cached data, fetching from Vapi API...");
 
-      const { data, error: functionError } = await supabase.functions.invoke("vapi-proxy", {
+      const { data, error: functionError } = await invokeWithRetry("vapi-proxy", {
         body: { endpoint: "/call?limit=100" },
       });
 

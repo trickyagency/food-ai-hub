@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Loader2 } from "lucide-react";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 
 interface FileSyncButtonProps {
   fileId: string;
@@ -18,7 +18,7 @@ const FileSyncButton = ({ fileId, fileName, onSyncComplete }: FileSyncButtonProp
       setUploading(true);
       console.log("Uploading file to Vapi:", fileId);
 
-      const { data, error } = await supabase.functions.invoke("vapi-file-upload", {
+      const { data, error } = await invokeWithRetry("vapi-file-upload", {
         body: { fileId },
       });
 

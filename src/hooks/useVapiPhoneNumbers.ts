@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeWithRetry } from '@/lib/supabaseHelpers';
 
 export interface VapiPhoneNumber {
   id: string;
@@ -41,8 +42,8 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
         
         setLoading(false);
         
-        // Trigger background sync
-        supabase.functions.invoke('vapi-sync', { body: { syncType: 'phone-numbers' } })
+        // Trigger background sync with retry
+        invokeWithRetry('vapi-sync', { body: { syncType: 'phone-numbers' } })
           .catch(err => console.log('Background sync error:', err));
         
         return;
@@ -50,7 +51,7 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
 
       // If cache is empty, fetch from Vapi API
       console.log('Cache empty, fetching phone numbers from Vapi API...');
-      const { data, error: fnError } = await supabase.functions.invoke('vapi-proxy', {
+      const { data, error: fnError } = await invokeWithRetry('vapi-proxy', {
         body: {
           endpoint: '/phone-number',
           method: 'GET',

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 import { Upload, File, X, CheckCircle2, AlertCircle, FileText, Trash2, Download, Edit2, Eye, Wifi, WifiOff, Cloud, CloudOff, History, CheckSquare, Square } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -608,19 +609,10 @@ const DatabaseFileManager = () => {
         toast.info('Removing file from Vapi...');
 
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (!session) {
-            throw new Error('No active session');
-          }
-
-          const { data: vapiDeleteData, error: vapiDeleteError } = await supabase.functions.invoke(
+          const { data: vapiDeleteData, error: vapiDeleteError } = await invokeWithRetry(
             'vapi-file-delete',
             {
               body: { fileId: file.id },
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
             }
           );
 
@@ -737,19 +729,12 @@ const DatabaseFileManager = () => {
           console.log('File is synced to Vapi, deleting from Vapi first...');
 
           try {
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (session) {
-              await supabase.functions.invoke(
-                'vapi-file-delete',
-                {
-                  body: { fileId: file.id },
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                  },
-                }
-              );
-            }
+            await invokeWithRetry(
+              'vapi-file-delete',
+              {
+                body: { fileId: file.id },
+              }
+            );
           } catch (vapiError) {
             console.error('Error deleting from Vapi:', vapiError);
           }

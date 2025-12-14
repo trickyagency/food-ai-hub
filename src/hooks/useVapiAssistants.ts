@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 
 export interface VapiAssistant {
   id: string;
@@ -34,9 +35,9 @@ export const useVapiAssistants = (autoFetch = true) => {
         setAssistants(cachedAssistants);
         setLoading(false);
 
-        // Trigger background sync
+        // Trigger background sync with retry
         console.log("Triggering background sync...");
-        supabase.functions.invoke("vapi-sync").catch(err => {
+        invokeWithRetry("vapi-sync").catch(err => {
           console.error("Background sync failed:", err);
         });
 
@@ -45,7 +46,7 @@ export const useVapiAssistants = (autoFetch = true) => {
 
       console.log("No cached data, fetching from Vapi API...");
 
-      const { data, error: functionError } = await supabase.functions.invoke("vapi-proxy", {
+      const { data, error: functionError } = await invokeWithRetry("vapi-proxy", {
         body: { endpoint: "/assistant", method: "GET" },
       });
 

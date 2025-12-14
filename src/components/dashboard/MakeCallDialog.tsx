@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { Phone, Loader2, Check, ChevronsUpDown, Star, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 import { useVapiAssistants } from "@/hooks/useVapiAssistants";
 import { useVapiPhoneNumbers } from "@/hooks/useVapiPhoneNumbers";
 import { z } from "zod";
@@ -210,7 +210,7 @@ export const MakeCallDialog = () => {
         twilioNumber: twilioPhoneNumber.number
       });
 
-      const { data, error } = await supabase.functions.invoke("vapi-proxy", {
+      const { data, error } = await invokeWithRetry("vapi-proxy", {
         body: {
           endpoint: "/call/phone",
           method: "POST",
