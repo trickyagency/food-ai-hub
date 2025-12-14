@@ -90,6 +90,8 @@ Deno.serve(async (req) => {
 
     let userId: string;
 
+    const redirectUrl = `${req.headers.get('origin') || 'https://undppzthskqsikywqvwn.lovable.app'}/auth`;
+
     if (existingUser) {
       console.log(`User ${email} already exists with ID: ${existingUser.id}`);
       userId = existingUser.id;
@@ -110,37 +112,84 @@ Deno.serve(async (req) => {
 
       // User exists but has no role - assign the role
       console.log(`Assigning role ${role} to existing user ${existingUser.id}`);
-    } else {
-      // Create new user using Admin API
-      const { data: newUser, error: createError } = await supabaseClient.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: {
-          invited_by: requestingUser.id,
-          setup_required: true,
-        },
-      });
 
-      if (createError) {
-        console.error('Error creating user:', createError);
-        return new Response(
-          JSON.stringify({ error: createError.message }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      // Assign role first
+      const { error: roleInsertError } = await supabaseClient
+        .from('user_roles')
+        .insert([{ 
+          user_id: userId, 
+          role: role,
+          created_by: requestingUser.id 
+        }]);
 
-      if (!newUser.user) {
+      if (roleInsertError) {
+        console.error('Error assigning role:', roleInsertError);
         return new Response(
-          JSON.stringify({ error: 'User creation failed' }),
+          JSON.stringify({ error: 'Failed to assign role: ' + roleInsertError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      userId = newUser.user.id;
-      console.log(`User created with ID: ${userId}`);
+      // Send password reset email for existing user to set up their account
+      const { error: resetError } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+
+      if (resetError) {
+        console.error('Error sending reset email:', resetError);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            userId: userId,
+            warning: 'Role assigned but setup email could not be sent.',
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`Role ${role} assigned and setup email sent to existing user ${email}`);
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          userId: userId,
+          message: 'Role assigned to existing user. Setup email sent.',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Assign role to the user
+    // Invite new user - this creates the user AND sends the invitation email
+    console.log(`Inviting new user: ${email}`);
+    const { data: inviteData, error: inviteError } = await supabaseClient.auth.admin.inviteUserByEmail(
+      email,
+      {
+        redirectTo: redirectUrl,
+        data: {
+          invited_by: requestingUser.id,
+          setup_required: true,
+        },
+      }
+    );
+
+    if (inviteError) {
+      console.error('Error inviting user:', inviteError);
+      return new Response(
+        JSON.stringify({ error: inviteError.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!inviteData.user) {
+      return new Response(
+        JSON.stringify({ error: 'User invitation failed' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    userId = inviteData.user.id;
+    console.log(`User invited with ID: ${userId}`);
+
+    // Assign role to the new user
     const { error: roleInsertError } = await supabaseClient
       .from('user_roles')
       .insert([{ 
@@ -151,47 +200,21 @@ Deno.serve(async (req) => {
 
     if (roleInsertError) {
       console.error('Error assigning role:', roleInsertError);
-      // Only rollback if we created a new user
-      if (!existingUser) {
-        await supabaseClient.auth.admin.deleteUser(userId);
-      }
+      // Rollback - delete the invited user
+      await supabaseClient.auth.admin.deleteUser(userId);
       return new Response(
         JSON.stringify({ error: 'Failed to assign role: ' + roleInsertError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Role ${role} assigned to user ${userId}`);
-
-    // Generate password reset link for account setup
-    const { data: resetData, error: resetError } = await supabaseClient.auth.admin.generateLink({
-      type: 'recovery',
-      email: email,
-      options: {
-        redirectTo: `${req.headers.get('origin') || 'https://undppzthskqsikywqvwn.lovable.app'}/auth`,
-      },
-    });
-
-    if (resetError) {
-      console.error('Error generating reset link:', resetError);
-      // User is created, just warn about email
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          userId: userId,
-          warning: 'User created but setup email could not be sent. Please resend manually.',
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Setup link generated for ${email}`);
+    console.log(`Role ${role} assigned to new user ${userId}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         userId: userId,
-        message: existingUser ? 'Role assigned to existing user. Setup email sent.' : 'User invited successfully. Setup email sent.',
+        message: 'User invited successfully. Setup email sent.',
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
