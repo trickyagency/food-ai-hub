@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VapiCall } from "@/hooks/useVapiCalls";
 import { format } from "date-fns";
-import { Phone, Clock, DollarSign, MessageSquare, Volume2, Download } from "lucide-react";
+import { Phone, Clock, DollarSign, MessageSquare, Volume2, Download, FileText } from "lucide-react";
 import CallTagManager from "./CallTagManager";
 import { formatDuration } from "@/lib/utils";
 
@@ -61,6 +61,22 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
           </div>
 
           <Separator />
+
+          {/* Call Summary */}
+          {call.summary && (
+            <>
+              <div className="space-y-4">
+                <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  Call Summary
+                </h3>
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="text-sm leading-relaxed">{call.summary}</p>
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
 
           {/* Contact Info */}
           <div className="space-y-4">

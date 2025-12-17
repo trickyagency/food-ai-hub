@@ -72,9 +72,16 @@ const SwipeableCallRow = ({
       >
         <TableRow className="hover:bg-muted/50 border-b">
           <TableCell className="py-4">
-            <Badge variant="outline" className="text-xs sm:text-sm">
-              {getCallTypeLabel(call.type)}
-            </Badge>
+            <div className="flex flex-col gap-1">
+              <Badge variant="outline" className="text-xs sm:text-sm w-fit">
+                {getCallTypeLabel(call.type)}
+              </Badge>
+              {call.summary && (
+                <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                  {call.summary.length > 40 ? `${call.summary.slice(0, 40)}...` : call.summary}
+                </span>
+              )}
+            </div>
           </TableCell>
           <TableCell className="font-mono text-xs sm:text-sm py-4">
             {call.customer?.number || call.phoneNumber?.number || "N/A"}

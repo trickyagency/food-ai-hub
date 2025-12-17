@@ -93,11 +93,12 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
 
       console.log("Fetching calls from Supabase cache...");
 
-      // First, try to get from Supabase cache
+      // First, try to get from Supabase cache - order by started_at with created_at fallback
       const { data: cachedCalls, error: cacheError } = await supabase
         .from("vapi_calls")
         .select("*")
-        .order("started_at", { ascending: false });
+        .order("started_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
 
       if (!cacheError && cachedCalls && cachedCalls.length > 0) {
         console.log(`Retrieved ${cachedCalls.length} calls from cache`);
@@ -188,6 +189,13 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
         startedAt: call.startedAt,
         endedAt: call.endedAt,
       }));
+      
+      // Sort by startedAt (descending) with createdAt fallback for null values
+      mappedCalls.sort((a: any, b: any) => {
+        const dateA = new Date(a.startedAt || a.createdAt).getTime();
+        const dateB = new Date(b.startedAt || b.createdAt).getTime();
+        return dateB - dateA;
+      });
       
       setCalls(mappedCalls);
       setLastUpdated(new Date());

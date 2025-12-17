@@ -85,6 +85,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                   <TableHead>Duration</TableHead>
                   <TableHead>Cost</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Summary</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -92,7 +93,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
+                    <TableCell colSpan={8} className="text-center py-8">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         <span className="text-muted-foreground">Loading calls...</span>
@@ -101,7 +102,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                   </TableRow>
                 ) : currentCalls.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No calls found. Make some calls using Vapi to see them here.
                     </TableCell>
                   </TableRow>
@@ -131,6 +132,19 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(call.status, call.endedReason)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell max-w-[200px]">
+                          {call.summary ? (
+                            <span 
+                              className="text-sm text-muted-foreground truncate block cursor-pointer hover:text-foreground"
+                              title={call.summary}
+                              onClick={() => setSelectedCall(call)}
+                            >
+                              {call.summary.length > 60 ? `${call.summary.slice(0, 60)}...` : call.summary}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground/50 italic">No summary</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(call.createdAt), "MMM d, h:mm a")}
