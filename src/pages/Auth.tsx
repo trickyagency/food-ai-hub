@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
 
 type AuthMode = 'login' | 'reset' | 'setup';
 
@@ -231,6 +232,7 @@ const Auth = () => {
                   disabled={isLoading}
                   minLength={6}
                 />
+                {mode === 'setup' && <PasswordStrengthIndicator password={password} />}
               </div>
             )}
 
