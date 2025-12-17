@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeWithRetry } from "@/lib/supabaseHelpers";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useUserRole } from "@/hooks/useUserRole";
 import { auditLog } from "@/lib/auditLog";
+
+const emailSchema = z.string()
+  .trim()
+  .min(1, { message: "Email is required" })
+  .email({ message: "Please enter a valid email address" })
+  .max(255, { message: "Email must be less than 255 characters" });
 
 interface UserProfile {
   id: string;
@@ -221,8 +228,10 @@ const UserManagement = () => {
   };
 
   const addNewUser = async () => {
-    if (!newUserEmail) {
-      toast.error("Email is required");
+    // Validate email format
+    const validation = emailSchema.safeParse(newUserEmail);
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
