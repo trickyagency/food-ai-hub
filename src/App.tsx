@@ -10,6 +10,7 @@ import OrderNotifications from "./components/OrderNotifications";
 import UploadFailureMonitor from "./components/upload-history/UploadFailureMonitor";
 import SessionTimeoutWarning from "./components/SessionTimeoutWarning";
 import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
+import { useAutoSessionExtend } from "./hooks/useAutoSessionExtend";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Settings from "./pages/Settings";
@@ -23,6 +24,7 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   useInactivityTimeout(30); // 30 minute inactivity timeout when "Remember me" is unchecked
+  useAutoSessionExtend(); // Automatically extends session in background when user is active
   return null;
 };
 
