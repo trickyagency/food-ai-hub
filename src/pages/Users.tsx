@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeWithRetry } from "@/lib/supabaseHelpers";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Trash2, Shield, UserPlus } from "lucide-react";
+import { Trash2, Shield, UserPlus, MailPlus, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,12 +55,13 @@ interface UserWithRole extends UserProfile {
 const Users = () => {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("viewer");
   const [isAddingUser, setIsAddingUser] = useState(false);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCurrentUserRole();
@@ -69,6 +71,7 @@ const Users = () => {
   const fetchCurrentUserRole = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      setCurrentUserId(user.id);
       const { data } = await supabase
         .from("user_roles")
         .select("role")
@@ -137,16 +140,18 @@ const Users = () => {
 
   const deleteUser = async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user?.id === userId) {
+      if (currentUserId === userId) {
         toast.error("You cannot delete your own account");
         return;
       }
 
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Call edge function to delete user
+      const { data, error } = await invokeWithRetry('delete-user', {
+        body: { userId },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast.success("User deleted successfully");
       fetchUsers();
@@ -156,43 +161,62 @@ const Users = () => {
   };
 
   const addNewUser = async () => {
-    if (!newUserEmail || !newUserPassword) {
-      toast.error("Email and password are required");
+    if (!newUserEmail) {
+      toast.error("Email is required");
       return;
     }
 
     setIsAddingUser(true);
     try {
-      // Create the user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: newUserPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        }
+      // Call edge function to invite user via Admin API
+      const { data, error } = await invokeWithRetry('invite-user', {
+        body: { 
+          email: newUserEmail, 
+          role: newUserRole 
+        },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("User creation failed");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Assign role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert([{ user_id: authData.user.id, role: newUserRole as any }]);
+      if (data?.warning) {
+        toast.warning(data.warning);
+      } else {
+        toast.success("User invited! Setup email sent to " + newUserEmail);
+      }
 
-      if (roleError) throw roleError;
-
-      toast.success("User created successfully");
       setIsAddUserOpen(false);
       setNewUserEmail("");
-      setNewUserPassword("");
       setNewUserRole("viewer");
       fetchUsers();
     } catch (error: any) {
-      toast.error("Failed to create user: " + error.message);
+      toast.error("Failed to invite user: " + error.message);
     } finally {
       setIsAddingUser(false);
     }
+  };
+
+  const resendInvitation = async (email: string) => {
+    setResendingInvite(email);
+    try {
+      const { data, error } = await invokeWithRetry('resend-invite', {
+        body: { email },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Setup email resent to " + email);
+    } catch (error: any) {
+      toast.error("Failed to resend invitation: " + error.message);
+    } finally {
+      setResendingInvite(null);
+    }
+  };
+
+  // Check if user needs invitation resent (no full_name means they haven't completed setup)
+  const needsInviteResend = (user: UserWithRole) => {
+    return !user.full_name && currentUserRole === "owner";
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -213,14 +237,16 @@ const Users = () => {
   };
 
   // Can change role (Owner can change all, Admin can change non-privileged)
-  const canChangeRole = (userRole: string) => {
+  const canChangeRole = (userId: string, userRole: string) => {
+    if (userId === currentUserId) return false; // Cannot change own role
     if (currentUserRole === "owner") return true;
     if (currentUserRole === "admin" && userRole !== "owner" && userRole !== "admin") return true;
     return false;
   };
 
   // Can delete user (Owner only)
-  const canDeleteUser = () => {
+  const canDeleteUser = (userId: string) => {
+    if (userId === currentUserId) return false; // Cannot delete own account
     return currentUserRole === "owner";
   };
 
@@ -264,9 +290,9 @@ const Users = () => {
               </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New User</DialogTitle>
+                <DialogTitle>Invite New User</DialogTitle>
                 <DialogDescription>
-                  Create a new user account with a specific role
+                  User will receive an email to set up their account and password
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 pt-4">
@@ -280,18 +306,9 @@ const Users = () => {
                     onChange={(e) => setNewUserEmail(e.target.value)}
                     disabled={isAddingUser}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Temporary Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={newUserPassword}
-                    onChange={(e) => setNewUserPassword(e.target.value)}
-                    disabled={isAddingUser}
-                    minLength={6}
-                  />
+                  <p className="text-xs text-muted-foreground">
+                    A setup email will be sent to this address
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
@@ -305,9 +322,7 @@ const Users = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {currentUserRole === "owner" && (
-                        <>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </>
+                        <SelectItem value="admin">Admin</SelectItem>
                       )}
                       <SelectItem value="manager">Manager</SelectItem>
                       <SelectItem value="staff">Staff</SelectItem>
@@ -320,7 +335,7 @@ const Users = () => {
                 disabled={isAddingUser}
                 className="w-full"
               >
-                {isAddingUser ? "Creating..." : "Create User"}
+                {isAddingUser ? "Sending Invite..." : "Send Invitation"}
               </Button>
             </div>
           </DialogContent>
@@ -355,7 +370,7 @@ const Users = () => {
                       <TableCell className="font-medium">{user.email}</TableCell>
                       <TableCell>{user.full_name || "-"}</TableCell>
                   <TableCell>
-                        {canChangeRole(user.role) ? (
+                        {canChangeRole(user.id, user.role) ? (
                           <Select
                             value={user.role}
                             onValueChange={(value) => updateUserRole(user.id, value)}
@@ -385,8 +400,23 @@ const Users = () => {
                       <TableCell>
                         {new Date(user.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-right">
-                        {canDeleteUser() && (
+                      <TableCell className="text-right space-x-1">
+                        {needsInviteResend(user) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => resendInvitation(user.email)}
+                            disabled={resendingInvite === user.email}
+                            title="Resend setup email"
+                          >
+                            {resendingInvite === user.email ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MailPlus className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                        {canDeleteUser(user.id) && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon">
