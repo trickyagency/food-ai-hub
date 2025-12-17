@@ -5,6 +5,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function json(status: number, body: Record<string, unknown>) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function getJwtRole(jwt: string): string | null {
+  try {
+    const parts = jwt.split('.');
+    if (parts.length < 2) return null;
+    const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payloadB64 + '='.repeat((4 - (payloadB64.length % 4)) % 4);
+    const payloadJson = atob(padded);
+    const payload = JSON.parse(payloadJson);
+    return typeof payload?.role === 'string' ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -22,23 +43,30 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Get user from JWT
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      throw new Error('No authorization header');
+    const token = authHeader?.replace('Bearer ', '').trim();
+
+    // When the frontend calls functions without a session, Supabase JS will send the anon JWT.
+    // That must NOT be treated as authenticated.
+    if (!token) {
+      return json(401, { error: 'Missing Authorization token' });
     }
 
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const role = getJwtRole(token);
+    if (role === 'anon') {
+      return json(401, { error: 'Not authenticated' });
+    }
+
+    // Get user from JWT
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
 
     if (userError || !user) {
-      throw new Error('Unauthorized');
+      return json(401, { error: 'Unauthorized' });
     }
 
     const VAPI_API_KEY = Deno.env.get('VAPI_API_KEY');
     if (!VAPI_API_KEY) {
-      throw new Error('VAPI_API_KEY not configured');
+      return json(500, { error: 'VAPI_API_KEY not configured' });
     }
 
     console.log('Starting Vapi data sync for user:', user.id);
@@ -54,7 +82,7 @@ Deno.serve(async (req) => {
     });
 
     if (!callsResponse.ok) {
-      throw new Error(`Vapi API error: ${callsResponse.status}`);
+      return json(500, { error: `Vapi API error: ${callsResponse.status}` });
     }
 
     const calls = await callsResponse.json();
@@ -148,28 +176,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        synced: {
-          calls: calls.length,
-          assistants: assistantsCount,
-        },
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    return json(200, {
+      success: true,
+      synced: {
+        calls: calls.length,
+        assistants: assistantsCount,
+      },
+    });
   } catch (error) {
     console.error('Sync error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      }
-    );
+    return json(500, { error: errorMessage });
   }
 });

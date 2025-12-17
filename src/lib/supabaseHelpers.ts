@@ -1,67 +1,77 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Invokes a Supabase edge function with automatic JWT refresh on 401 errors.
- * This handles the case where the token expires between auth checks and the actual API call.
+ * Invokes a Supabase edge function with a guaranteed user JWT (never the anon key).
+ * Automatically refreshes tokens on auth-related failures.
  */
 export async function invokeWithRetry<T = any>(
   functionName: string,
-  options?: { body?: Record<string, any> }
+  options?: { body?: Record<string, any>; headers?: Record<string, string> }
 ): Promise<{ data: T | null; error: Error | null }> {
-  // First, ensure we have a valid session before making the call
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (!session) {
-    console.log(`No valid session for ${functionName}, skipping call`);
-    return { data: null, error: new Error('No authenticated session') };
-  }
+  try {
+    // Ensure we have a valid session BEFORE making the call
+    const { data: sessionData } = await supabase.auth.getSession();
+    let session = sessionData.session;
 
-  // Check if token is expired or expiring very soon
-  const expiresAt = session.expires_at;
-  const now = Math.floor(Date.now() / 1000);
-  const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
-  
-  if (timeUntilExpiry < 30) {
-    console.log(`Token expiring soon (${timeUntilExpiry}s), refreshing before ${functionName}...`);
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError || !refreshData.session) {
-      console.error("Pre-call session refresh failed:", refreshError);
-      return { data: null, error: new Error('Session refresh failed') };
+    if (!session) {
+      return { data: null, error: new Error("No authenticated session") };
     }
-  }
 
-  // First attempt
-  const { data, error } = await supabase.functions.invoke(functionName, options);
+    // Proactively refresh if token is close to expiry
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
 
-  // If we get a 401, try to refresh the session and retry once
-  if (error?.message?.includes("401") || error?.message?.includes("Invalid JWT") || error?.message?.includes("Unauthorized")) {
-    console.log(`Got auth error from ${functionName}, attempting session refresh...`);
-    
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError || !refreshData.session) {
-      console.error("Session refresh failed:", refreshError);
-      return { data: null, error };
+    if (timeUntilExpiry < 30) {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData.session) {
+        return { data: null, error: new Error("Session refresh failed") };
+      }
+      session = refreshData.session;
     }
-    
-    console.log("Session refreshed, retrying edge function call...");
-    
-    // Retry the call with the new session
-    const retryResult = await supabase.functions.invoke(functionName, options);
-    
-    if (retryResult.error) {
-      return { data: null, error: new Error(retryResult.error.message) };
+
+    const buildOptions = () => ({
+      ...options,
+      headers: {
+        ...(options?.headers ?? {}),
+        // Force the user JWT (prevents anon-token calls that lead to Unauthorized)
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    // First attempt
+    const first = await supabase.functions.invoke(functionName, buildOptions());
+
+    if (first.error) {
+      const msg = first.error.message || "";
+      const isAuthError =
+        msg.includes("401") ||
+        msg.toLowerCase().includes("invalid jwt") ||
+        msg.toLowerCase().includes("unauthorized") ||
+        msg.toLowerCase().includes("jwt expired");
+
+      if (isAuthError) {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          return { data: null, error: new Error(first.error.message) };
+        }
+        session = refreshData.session;
+
+        const retry = await supabase.functions.invoke(functionName, buildOptions());
+        if (retry.error) {
+          return { data: null, error: new Error(retry.error.message) };
+        }
+        return { data: retry.data as T, error: null };
+      }
+
+      return { data: null, error: new Error(first.error.message) };
     }
-    
-    return { data: retryResult.data as T, error: null };
-  }
 
-  if (error) {
-    return { data: null, error: new Error(error.message) };
+    return { data: first.data as T, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return { data: null, error: new Error(message) };
   }
-
-  return { data: data as T, error: null };
 }
 
 /**
