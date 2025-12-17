@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRefreshSession } from '@/lib/sessionManager';
 import { toast } from 'sonner';
@@ -15,18 +15,42 @@ import {
 import { Clock, RefreshCw, LogOut } from 'lucide-react';
 
 const SessionTimeoutWarning = () => {
-  const { session, logout, isAuthenticated } = useAuth();
+  const { session, logout, isAuthenticated, loading, isInitialized } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isExtending, setIsExtending] = useState(false);
+  const loginTimeRef = useRef<number>(Date.now());
+
+  // Track when session changes (new login)
+  useEffect(() => {
+    if (session?.access_token) {
+      loginTimeRef.current = Date.now();
+    }
+  }, [session?.access_token]);
 
   useEffect(() => {
+    // Don't check until auth is fully initialized and not loading
+    if (!isInitialized || loading) {
+      return;
+    }
+
     if (!session?.expires_at || !isAuthenticated) {
       setShowWarning(false);
       return;
     }
 
     const checkExpiry = () => {
+      // Grace period: don't check for 10 seconds after login
+      const timeSinceLogin = Date.now() - loginTimeRef.current;
+      if (timeSinceLogin < 10000) {
+        return;
+      }
+
+      // Skip if expires_at is invalid
+      if (!session?.expires_at || session.expires_at <= 0) {
+        return;
+      }
+
       const now = Math.floor(Date.now() / 1000);
       const remaining = session.expires_at - now;
 
@@ -35,10 +59,10 @@ const SessionTimeoutWarning = () => {
         setShowWarning(true);
         setTimeRemaining(remaining);
       } else if (remaining <= 0) {
-        // Session expired
+        // Session might be expired - but don't auto-logout
+        // The auto-session-extend hook should handle refreshing
+        // Only show warning if we haven't already
         setShowWarning(false);
-        toast.error('Your session has expired. Please log in again.');
-        logout();
       } else {
         setShowWarning(false);
       }
@@ -48,7 +72,7 @@ const SessionTimeoutWarning = () => {
     checkExpiry();
 
     return () => clearInterval(interval);
-  }, [session, isAuthenticated, logout]);
+  }, [session, isAuthenticated, isInitialized, loading]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -62,10 +86,10 @@ const SessionTimeoutWarning = () => {
       const result = await safeRefreshSession();
       if (result.success) {
         setShowWarning(false);
+        loginTimeRef.current = Date.now(); // Reset grace period
         toast.success('Session extended successfully');
       } else {
         toast.error('Failed to extend session. Please log in again.');
-        logout();
       }
     } catch (error) {
       toast.error('Failed to extend session');
