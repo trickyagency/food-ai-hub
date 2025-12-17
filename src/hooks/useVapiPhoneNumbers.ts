@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { invokeWithRetry } from '@/lib/supabaseHelpers';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface VapiPhoneNumber {
   id: string;
@@ -10,6 +11,7 @@ export interface VapiPhoneNumber {
 }
 
 export const useVapiPhoneNumbers = (autoFetch = true) => {
+  const { isAuthenticated, isInitialized, loading: authLoading } = useAuth();
   const [phoneNumbers, setPhoneNumbers] = useState<VapiPhoneNumber[]>([]);
   const [twilioPhoneNumber, setTwilioPhoneNumber] = useState<VapiPhoneNumber | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,10 +119,15 @@ export const useVapiPhoneNumbers = (autoFetch = true) => {
   };
 
   useEffect(() => {
+    // Wait for auth to be ready before fetching
+    if (!isInitialized || authLoading || !isAuthenticated) {
+      return;
+    }
+    
     if (autoFetch) {
       fetchPhoneNumbers();
     }
-  }, [autoFetch]);
+  }, [autoFetch, isAuthenticated, isInitialized, authLoading]);
 
   return { phoneNumbers, twilioPhoneNumber, loading, error, refresh: fetchPhoneNumbers };
 };
