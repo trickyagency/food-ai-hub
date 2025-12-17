@@ -216,10 +216,10 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
       return;
     }
     
-    // Small delay to let auth state fully settle after login
+    // Delay to let auth state fully settle after login
     const timeoutId = setTimeout(() => {
       fetchCalls();
-    }, 100);
+    }, 300);
     
     
     // Set up real-time subscription for live updates
