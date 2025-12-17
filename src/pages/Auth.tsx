@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +18,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
   const { login, resetPassword, completeAccountSetup, isAuthenticated, user } = useAuth();
@@ -109,6 +111,9 @@ const Auth = () => {
           toast.error(result.error || "An error occurred");
         }
       } else {
+        // Store remember me preference before login
+        localStorage.setItem('rememberMe', String(rememberMe));
+        
         const result = await login(email, password);
         
         if (result.success) {
@@ -243,6 +248,24 @@ const Auth = () => {
                   disabled={isLoading}
                   minLength={6}
                 />
+              </div>
+            )}
+
+            {/* Remember Me checkbox - only for login mode */}
+            {mode === 'login' && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(!!checked)}
+                  disabled={isLoading}
+                />
+                <Label
+                  htmlFor="rememberMe"
+                  className="text-sm text-muted-foreground cursor-pointer"
+                >
+                  Remember me for 7 days
+                </Label>
               </div>
             )}
 

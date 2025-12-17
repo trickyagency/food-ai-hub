@@ -8,6 +8,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import RealtimeNotifications from "./components/RealtimeNotifications";
 import OrderNotifications from "./components/OrderNotifications";
 import UploadFailureMonitor from "./components/upload-history/UploadFailureMonitor";
+import SessionTimeoutWarning from "./components/SessionTimeoutWarning";
+import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Settings from "./pages/Settings";
@@ -19,10 +21,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => {
+  useInactivityTimeout(30); // 30 minute inactivity timeout when "Remember me" is unchecked
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <AppContent />
+        <SessionTimeoutWarning />
         <RealtimeNotifications />
         <UploadFailureMonitor />
         <Toaster />
