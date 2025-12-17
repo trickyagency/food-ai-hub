@@ -16,12 +16,21 @@ export const useUserRole = () => {
       return;
     }
 
+    // Verify we have a valid session before making requests
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.log('No valid session, skipping role fetch');
+      setRole(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       
       if (error) {
         // Check for 401/JWT errors and retry after refresh
@@ -35,8 +44,12 @@ export const useUserRole = () => {
         }
         console.error("Failed to fetch user role:", error);
         setRole(null);
+      } else if (!data) {
+        // No role found - this might be a new user, set default viewer role
+        console.log('No role found for user, defaulting to viewer');
+        setRole('viewer');
       } else {
-        setRole(data?.role as UserRole || null);
+        setRole(data.role as UserRole);
       }
     } catch (error) {
       console.error("Failed to fetch user role:", error);
