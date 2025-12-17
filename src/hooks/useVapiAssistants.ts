@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeWithRetry } from "@/lib/supabaseHelpers";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface VapiAssistant {
   id: string;
@@ -13,6 +14,7 @@ export interface VapiAssistant {
 }
 
 export const useVapiAssistants = (autoFetch = true) => {
+  const { isAuthenticated, isInitialized, loading: authLoading } = useAuth();
   const [assistants, setAssistants] = useState<VapiAssistant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +78,15 @@ export const useVapiAssistants = (autoFetch = true) => {
   };
 
   useEffect(() => {
+    // Wait for auth to be ready before fetching
+    if (!isInitialized || authLoading || !isAuthenticated) {
+      return;
+    }
+    
     if (autoFetch) {
       fetchAssistants();
     }
-  }, [autoFetch]);
+  }, [autoFetch, isAuthenticated, isInitialized, authLoading]);
 
   return {
     assistants,

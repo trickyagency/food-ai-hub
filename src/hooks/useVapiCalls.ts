@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeWithRetry } from "@/lib/supabaseHelpers";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface CostBreakdown {
   transport: number;
@@ -81,6 +82,7 @@ interface UseVapiCallsOptions {
 
 export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
   const { autoRefresh = false, refreshInterval = 60000 } = options;
+  const { isAuthenticated, isInitialized, loading: authLoading } = useAuth();
   const [calls, setCalls] = useState<VapiCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -209,8 +211,12 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
   };
 
   useEffect(() => {
+    // Wait for auth to be ready before fetching
+    if (!isInitialized || authLoading || !isAuthenticated) {
+      return;
+    }
+    
     fetchCalls();
-
     // Set up real-time subscription for live updates
     const channel = supabase
       .channel('vapi-calls-changes')
@@ -296,7 +302,7 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [autoRefresh, refreshInterval]);
+  }, [autoRefresh, refreshInterval, isAuthenticated, isInitialized, authLoading]);
 
   const refresh = () => {
     fetchCalls();

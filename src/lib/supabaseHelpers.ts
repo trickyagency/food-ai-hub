@@ -8,18 +8,40 @@ export async function invokeWithRetry<T = any>(
   functionName: string,
   options?: { body?: Record<string, any> }
 ): Promise<{ data: T | null; error: Error | null }> {
+  // First, ensure we have a valid session before making the call
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    console.log(`No valid session for ${functionName}, skipping call`);
+    return { data: null, error: new Error('No authenticated session') };
+  }
+
+  // Check if token is expired or expiring very soon
+  const expiresAt = session.expires_at;
+  const now = Math.floor(Date.now() / 1000);
+  const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
+  
+  if (timeUntilExpiry < 30) {
+    console.log(`Token expiring soon (${timeUntilExpiry}s), refreshing before ${functionName}...`);
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    
+    if (refreshError || !refreshData.session) {
+      console.error("Pre-call session refresh failed:", refreshError);
+      return { data: null, error: new Error('Session refresh failed') };
+    }
+  }
+
   // First attempt
   const { data, error } = await supabase.functions.invoke(functionName, options);
 
   // If we get a 401, try to refresh the session and retry once
-  if (error?.message?.includes("401") || error?.message?.includes("Invalid JWT")) {
-    console.log(`Got 401 from ${functionName}, attempting session refresh...`);
+  if (error?.message?.includes("401") || error?.message?.includes("Invalid JWT") || error?.message?.includes("Unauthorized")) {
+    console.log(`Got auth error from ${functionName}, attempting session refresh...`);
     
     const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
     
     if (refreshError || !refreshData.session) {
       console.error("Session refresh failed:", refreshError);
-      // Return the original error since we couldn't refresh
       return { data: null, error };
     }
     
