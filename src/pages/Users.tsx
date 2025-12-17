@@ -83,7 +83,7 @@ const Users = () => {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
       setCurrentUserRole(data?.role || null);
     }
   };
@@ -105,7 +105,7 @@ const Users = () => {
               .from("user_roles")
               .select("role")
               .eq("user_id", profile.id)
-              .single();
+              .maybeSingle();
 
             return {
               ...profile,

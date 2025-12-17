@@ -23,6 +23,7 @@ import { TodayOrdersWidget } from "@/components/dashboard/widgets/TodayOrdersWid
 import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicator";
 import { ExportAnalytics } from "@/components/dashboard/ExportAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { BarChart3, Activity, Phone, Settings } from "lucide-react";
 
 const Index = () => {
@@ -110,19 +111,9 @@ const Index = () => {
           {/* Dashboard Content */}
           {canSeeAdvancedMetrics ? (
             <div className="space-y-8">
-              {/* Show loading or error states */}
+              {/* Show loading skeleton or content */}
               {isLoading && allCalls.length === 0 ? (
-                <div className="flex items-center justify-center min-h-[400px]">
-                  <div className="text-center space-y-4">
-                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-lg font-semibold text-foreground">
-                      Loading Vapi data...
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Fetching your call analytics and metrics
-                    </p>
-                  </div>
-                </div>
+                <DashboardSkeleton />
               ) : (
                 <>
                   {/* Real-Time Call Monitor */}
