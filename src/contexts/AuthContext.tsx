@@ -25,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const logAuditEvent = async (eventType: string, eventDetails?: any) => {
     try {
@@ -40,15 +41,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let initialAuthDone = false;
 
-    // Set up auth state listener
+    // Set up auth state listener - MUST be synchronous per Supabase best practices
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, currentSession) => {
         console.log('Auth state changed:', event);
         
         // Only update state after initial auth is done to avoid race conditions
         if (initialAuthDone) {
-          setSession(session);
-          setUser(session?.user ?? null);
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
           
           // If signed out, clear loading
           if (event === 'SIGNED_OUT') {
@@ -56,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // Log authentication events
+        // Log authentication events - defer to avoid deadlock
         if (event === 'SIGNED_IN') {
           setTimeout(() => logAuditEvent('login', { method: 'email' }), 0);
         } else if (event === 'SIGNED_OUT') {
@@ -64,9 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else if (event === 'TOKEN_REFRESHED') {
           console.log('Token refreshed successfully');
           // Update session with new token
-          if (session) {
-            setSession(session);
-            setUser(session?.user ?? null);
+          if (currentSession) {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
           }
         }
       }
@@ -151,8 +152,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // Function to manually refresh session (useful for retry on 401)
+  // Function to manually refresh session with debouncing (useful for retry on 401)
   const refreshSession = useCallback(async (): Promise<boolean> => {
+    // Prevent concurrent refresh attempts
+    if (isRefreshing) {
+      console.log('Session refresh already in progress, skipping...');
+      return false;
+    }
+    
+    setIsRefreshing(true);
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
@@ -168,8 +176,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error('Error refreshing session:', err);
       return false;
+    } finally {
+      setIsRefreshing(false);
     }
-  }, []);
+  }, [isRefreshing]);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
