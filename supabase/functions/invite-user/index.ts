@@ -68,6 +68,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate email format (server-side)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedEmail = email.trim();
+    if (!emailRegex.test(trimmedEmail) || trimmedEmail.length > 255) {
+      return new Response(
+        JSON.stringify({ error: 'Please enter a valid email address' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Validate role
     const validRoles = ['admin', 'manager', 'staff', 'viewer'];
     if (!role || !validRoles.includes(role)) {
