@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Trash2, Shield, UserPlus } from "lucide-react";
+import { Trash2, Shield, UserPlus, MailPlus, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +59,7 @@ const UserManagement = () => {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [pendingRoleChange, setPendingRoleChange] = useState<{ userId: string; newRole: string; userEmail: string } | null>(null);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -288,6 +289,29 @@ const UserManagement = () => {
     return currentUserRole === "owner";
   };
 
+  // Check if user needs invitation resent (no full_name means they haven't completed setup)
+  const needsInviteResend = (user: UserWithRole) => {
+    return !user.full_name && currentUserRole === "owner";
+  };
+
+  const resendInvitation = async (email: string) => {
+    setResendingInvite(email);
+    try {
+      const { data, error } = await invokeWithRetry('resend-invite', {
+        body: { email },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Setup email resent to " + email);
+    } catch (error: any) {
+      toast.error("Failed to resend invitation: " + error.message);
+    } finally {
+      setResendingInvite(null);
+    }
+  };
+
   return (
     <>
       {/* Admin Promotion Confirmation Dialog */}
@@ -453,7 +477,22 @@ const UserManagement = () => {
                   <TableCell>
                     {new Date(user.created_at).toLocaleDateString()}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right space-x-1">
+                    {needsInviteResend(user) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => resendInvitation(user.email)}
+                        disabled={resendingInvite === user.email}
+                        title="Resend setup email"
+                      >
+                        {resendingInvite === user.email ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MailPlus className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                     {canDeleteUser(user.id) && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

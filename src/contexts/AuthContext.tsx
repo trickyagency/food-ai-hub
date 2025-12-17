@@ -6,7 +6,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   completeAccountSetup: (password: string, fullName: string) => Promise<{ success: boolean; error?: string }>;
@@ -172,48 +171,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      // Check if an owner already exists - if so, block public signup
-      const { data: existingOwner, error: checkError } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('role', 'owner')
-        .limit(1);
-      
-      if (checkError) {
-        console.error('Error checking for existing owner:', checkError);
-        return { success: false, error: 'Unable to verify registration status. Please try again.' };
-      }
-      
-      if (existingOwner && existingOwner.length > 0) {
-        // Owner exists - block public signup
-        return { 
-          success: false, 
-          error: 'Public registration is disabled. Please contact your administrator for access.' 
-        };
-      }
-      
-      // No owner exists - allow signup (first user becomes owner via database trigger)
-      const redirectUrl = `${window.location.origin}/`;
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
-      });
-
-      if (error) {
-        return { success: false, error: error.message };
-      }
-
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Signup failed' };
-    }
-  };
-
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -356,7 +313,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         session,
         login,
-        signup,
         logout,
         resetPassword,
         completeAccountSetup,
