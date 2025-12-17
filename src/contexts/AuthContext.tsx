@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -152,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Function to manually refresh session (useful for retry on 401)
-  const refreshSession = async (): Promise<boolean> => {
+  const refreshSession = useCallback(async (): Promise<boolean> => {
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
@@ -169,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error refreshing session:', err);
       return false;
     }
-  };
+  }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
