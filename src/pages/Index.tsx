@@ -24,6 +24,8 @@ import PullToRefreshIndicator from "@/components/dashboard/PullToRefreshIndicato
 import { ExportAnalytics } from "@/components/dashboard/ExportAnalytics";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DashboardErrorFallback } from "@/components/dashboard/DashboardErrorFallback";
 import { BarChart3, Activity, Phone, Settings } from "lucide-react";
 
 const Index = () => {
@@ -74,143 +76,145 @@ const Index = () => {
 
   return (
     <DashboardLayout>
-      <PageTransition>
-        <div className="p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
-          {/* Pull to Refresh Indicator */}
-          <PullToRefreshIndicator
-            pullDistance={pullDistance}
-            isRefreshing={isRefreshing}
-            shouldTrigger={shouldTrigger}
-          />
-          
-          {/* Header */}
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="space-y-2">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
-                  VOICE AI Dashboard
-                </h1>
-                <p className="text-sm sm:text-base text-muted-foreground">
-                  Real-time AI voice assistant analytics and call management
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <ExportAnalytics calls={filteredCalls} analytics={analytics} />
-                {canMakeCalls && <MakeCallDialog />}
-              </div>
-            </div>
-            
-            {/* Connection Status */}
-            <VapiConnectionStatus 
-              onRefresh={handleRefresh}
-              lastUpdated={lastUpdated}
-              isRefreshing={isLoading}
+      <ErrorBoundary fallback={<DashboardErrorFallback onRetry={() => window.location.reload()} />}>
+        <PageTransition>
+          <div className="p-4 sm:p-6 lg:p-10 space-y-6 sm:space-y-8 max-w-[1800px] mx-auto dashboard-content bg-background min-h-screen">
+            {/* Pull to Refresh Indicator */}
+            <PullToRefreshIndicator
+              pullDistance={pullDistance}
+              isRefreshing={isRefreshing}
+              shouldTrigger={shouldTrigger}
             />
-          </div>
+            
+            {/* Header */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-2">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
+                    VOICE AI Dashboard
+                  </h1>
+                  <p className="text-sm sm:text-base text-muted-foreground">
+                    Real-time AI voice assistant analytics and call management
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <ExportAnalytics calls={filteredCalls} analytics={analytics} />
+                  {canMakeCalls && <MakeCallDialog />}
+                </div>
+              </div>
+              
+              {/* Connection Status */}
+              <VapiConnectionStatus 
+                onRefresh={handleRefresh}
+                lastUpdated={lastUpdated}
+                isRefreshing={isLoading}
+              />
+            </div>
 
-          {/* Dashboard Content */}
-          {canSeeAdvancedMetrics ? (
-            <div className="space-y-8">
-              {/* Show loading skeleton or content */}
-              {isLoading && allCalls.length === 0 ? (
-                <DashboardSkeleton />
-              ) : (
-                <>
-                  {/* Real-Time Call Monitor */}
-                  <RealTimeCallMonitor calls={allCalls} onRefresh={handleRefresh} />
+            {/* Dashboard Content */}
+            {canSeeAdvancedMetrics ? (
+              <div className="space-y-8">
+                {/* Show loading skeleton or content */}
+                {isLoading && allCalls.length === 0 ? (
+                  <DashboardSkeleton />
+                ) : (
+                  <>
+                    {/* Real-Time Call Monitor */}
+                    <RealTimeCallMonitor calls={allCalls} onRefresh={handleRefresh} />
 
-                  {/* Filters */}
-                  <CallFilters filters={filters} onFiltersChange={setFilters} />
-                  {filteredCount < totalCalls && (
-                    <div className="text-sm text-muted-foreground">
-                      Showing {filteredCount} of {totalCalls} calls
-                    </div>
-                  )}
-
-                  {/* Tabs for different views */}
-                  <Tabs defaultValue="overview" className="space-y-6">
-                    <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-                      <TabsList className="bg-muted/50 p-1 inline-flex min-w-full sm:min-w-0">
-                        <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
-                          <BarChart3 className="w-4 h-4" />
-                          <span className="hidden sm:inline">Overview</span>
-                          <span className="sm:hidden">Home</span>
-                        </TabsTrigger>
-                        <TabsTrigger value="analytics" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
-                          <Activity className="w-4 h-4" />
-                          <span className="hidden sm:inline">Detailed Analytics</span>
-                          <span className="sm:hidden">Analytics</span>
-                        </TabsTrigger>
-                        {canSeeCallLogs && (
-                          <TabsTrigger value="calls" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
-                            <Phone className="w-4 h-4" />
-                            <span className="hidden sm:inline">Call Logs</span>
-                            <span className="sm:hidden">Calls</span>
-                          </TabsTrigger>
-                        )}
-                        <TabsTrigger value="account" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
-                          <Settings className="w-4 h-4" />
-                          <span className="hidden sm:inline">Account & Resources</span>
-                          <span className="sm:hidden">Account</span>
-                        </TabsTrigger>
-                      </TabsList>
-                    </div>
-
-                    <TabsContent value="overview" className="space-y-6 sm:space-y-8">
-                      {/* Metrics Grid */}
-                      <VapiMetricsGrid analytics={analytics} loading={false} />
-
-                      {/* Today's Orders Widget */}
-                      <TodayOrdersWidget />
-
-                      {/* Cost Breakdown */}
-                      <CostBreakdownWidget analytics={analytics} />
-
-                      {/* Charts */}
-                      <CallStatisticsChart analytics={analytics} />
-
-                      {/* Performance Trends */}
-                      <PerformanceTrendsChart />
-                    </TabsContent>
-
-                    <TabsContent value="analytics" className="space-y-6 sm:space-y-8">
-                      <DetailedAnalytics calls={filteredCalls} />
-                    </TabsContent>
-
-                    {canSeeCallLogs && (
-                      <TabsContent value="calls" className="space-y-6 sm:space-y-8">
-                        <VapiCallLogsTable calls={filteredCalls} loading={false} />
-                      </TabsContent>
+                    {/* Filters */}
+                    <CallFilters filters={filters} onFiltersChange={setFilters} />
+                    {filteredCount < totalCalls && (
+                      <div className="text-sm text-muted-foreground">
+                        Showing {filteredCount} of {totalCalls} calls
+                      </div>
                     )}
 
-                    <TabsContent value="account" className="space-y-6 sm:space-y-8">
-                      {/* Phone Configuration */}
-                      <InboundCallConfig />
-                      
-                      {/* Account Overview */}
-                      <AccountOverviewWidget analytics={allAnalytics} />
-                      
-                      {/* Resources */}
-                      <AssistantsWidget />
-                    </TabsContent>
-                  </Tabs>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center space-y-3">
-                <p className="text-lg font-semibold text-foreground">
-                  Limited Access
-                </p>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  You don't have permission to view dashboard analytics. Contact your administrator for access.
-                </p>
+                    {/* Tabs for different views */}
+                    <Tabs defaultValue="overview" className="space-y-6">
+                      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <TabsList className="bg-muted/50 p-1 inline-flex min-w-full sm:min-w-0">
+                          <TabsTrigger value="overview" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                            <BarChart3 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Overview</span>
+                            <span className="sm:hidden">Home</span>
+                          </TabsTrigger>
+                          <TabsTrigger value="analytics" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                            <Activity className="w-4 h-4" />
+                            <span className="hidden sm:inline">Detailed Analytics</span>
+                            <span className="sm:hidden">Analytics</span>
+                          </TabsTrigger>
+                          {canSeeCallLogs && (
+                            <TabsTrigger value="calls" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                              <Phone className="w-4 h-4" />
+                              <span className="hidden sm:inline">Call Logs</span>
+                              <span className="sm:hidden">Calls</span>
+                            </TabsTrigger>
+                          )}
+                          <TabsTrigger value="account" className="flex items-center gap-2 text-xs sm:text-sm whitespace-nowrap">
+                            <Settings className="w-4 h-4" />
+                            <span className="hidden sm:inline">Account & Resources</span>
+                            <span className="sm:hidden">Account</span>
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
+
+                      <TabsContent value="overview" className="space-y-6 sm:space-y-8">
+                        {/* Metrics Grid */}
+                        <VapiMetricsGrid analytics={analytics} loading={false} />
+
+                        {/* Today's Orders Widget */}
+                        <TodayOrdersWidget />
+
+                        {/* Cost Breakdown */}
+                        <CostBreakdownWidget analytics={analytics} />
+
+                        {/* Charts */}
+                        <CallStatisticsChart analytics={analytics} />
+
+                        {/* Performance Trends */}
+                        <PerformanceTrendsChart />
+                      </TabsContent>
+
+                      <TabsContent value="analytics" className="space-y-6 sm:space-y-8">
+                        <DetailedAnalytics calls={filteredCalls} />
+                      </TabsContent>
+
+                      {canSeeCallLogs && (
+                        <TabsContent value="calls" className="space-y-6 sm:space-y-8">
+                          <VapiCallLogsTable calls={filteredCalls} loading={false} />
+                        </TabsContent>
+                      )}
+
+                      <TabsContent value="account" className="space-y-6 sm:space-y-8">
+                        {/* Phone Configuration */}
+                        <InboundCallConfig />
+                        
+                        {/* Account Overview */}
+                        <AccountOverviewWidget analytics={allAnalytics} />
+                        
+                        {/* Resources */}
+                        <AssistantsWidget />
+                      </TabsContent>
+                    </Tabs>
+                  </>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      </PageTransition>
+            ) : (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center space-y-3">
+                  <p className="text-lg font-semibold text-foreground">
+                    Limited Access
+                  </p>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    You don't have permission to view dashboard analytics. Contact your administrator for access.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </PageTransition>
+      </ErrorBoundary>
     </DashboardLayout>
   );
 };

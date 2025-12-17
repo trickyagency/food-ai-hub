@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { safeRefreshSession } from '@/lib/sessionManager';
 
 interface AuthContextType {
   user: User | null;
@@ -101,32 +102,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('Token expires in:', timeUntilExpiry, 'seconds');
         
         if (timeUntilExpiry <= 0) {
-          // Token already expired, try to refresh
+          // Token already expired, try to refresh using singleton
           console.log('Token expired, attempting refresh...');
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError || !refreshData.session) {
-            console.error('Failed to refresh expired session:', refreshError);
+          const result = await safeRefreshSession();
+          if (!result.success) {
+            console.error('Failed to refresh expired session');
             await supabase.auth.signOut();
             setSession(null);
             setUser(null);
           } else {
             console.log('Session refreshed successfully');
-            setSession(refreshData.session);
-            setUser(refreshData.session?.user ?? null);
+            setSession(result.session);
+            setUser(result.session?.user ?? null);
           }
         } else if (timeUntilExpiry < 300) {
-          // Token expires in less than 5 minutes, proactively refresh
+          // Token expires in less than 5 minutes, proactively refresh using singleton
           console.log('Token expiring soon, proactively refreshing...');
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) {
-            console.error('Failed to refresh session:', refreshError);
+          const result = await safeRefreshSession();
+          if (!result.success) {
+            console.error('Failed to refresh session');
             // Use existing session if refresh fails
             setSession(session);
             setUser(session?.user ?? null);
-          } else if (refreshData.session) {
+          } else if (result.session) {
             console.log('Session proactively refreshed');
-            setSession(refreshData.session);
-            setUser(refreshData.session?.user ?? null);
+            setSession(result.session);
+            setUser(result.session?.user ?? null);
           } else {
             setSession(session);
             setUser(session?.user ?? null);
