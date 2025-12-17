@@ -216,7 +216,12 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
       return;
     }
     
-    fetchCalls();
+    // Small delay to let auth state fully settle after login
+    const timeoutId = setTimeout(() => {
+      fetchCalls();
+    }, 100);
+    
+    
     // Set up real-time subscription for live updates
     const channel = supabase
       .channel('vapi-calls-changes')
@@ -294,12 +299,14 @@ export const useVapiCalls = (options: UseVapiCallsOptions = {}) => {
     if (autoRefresh) {
       const interval = setInterval(fetchCalls, refreshInterval);
       return () => {
+        clearTimeout(timeoutId);
         clearInterval(interval);
         supabase.removeChannel(channel);
       };
     }
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [autoRefresh, refreshInterval, isAuthenticated, isInitialized, authLoading]);

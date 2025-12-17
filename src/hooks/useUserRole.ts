@@ -23,14 +23,8 @@ export const useUserRole = () => {
       return;
     }
 
-    // Verify we have a valid session before making requests
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.log('No valid session, skipping role fetch');
-      setRole(null);
-      setLoading(false);
-      return;
-    }
+    // Trust AuthContext's user object - no need for redundant getSession() call
+    // This prevents thundering herd of session checks across components
 
     fetchingRef.current = true;
     lastUserIdRef.current = user.id;

@@ -1,40 +1,36 @@
 import { supabase } from "@/integrations/supabase/client";
+import { safeRefreshSession, getCurrentSession, isTokenExpiringSoon } from "./sessionManager";
 
 /**
  * Invokes a Supabase edge function with a guaranteed user JWT (never the anon key).
- * Automatically refreshes tokens on auth-related failures.
+ * Uses centralized session manager to prevent concurrent refresh attempts.
  */
 export async function invokeWithRetry<T = any>(
   functionName: string,
   options?: { body?: Record<string, any>; headers?: Record<string, string> }
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
-    // Ensure we have a valid session BEFORE making the call
-    const { data: sessionData } = await supabase.auth.getSession();
-    let session = sessionData.session;
+    // Get current session
+    let session = await getCurrentSession();
 
     if (!session) {
       return { data: null, error: new Error("No authenticated session") };
     }
 
-    // Proactively refresh if token is close to expiry
-    const expiresAt = session.expires_at;
-    const now = Math.floor(Date.now() / 1000);
-    const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
-
-    if (timeUntilExpiry < 30) {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError || !refreshData.session) {
+    // Proactively refresh if token is expiring soon (within 60 seconds)
+    if (isTokenExpiringSoon(session, 60)) {
+      console.log("[invokeWithRetry] Token expiring soon, refreshing...");
+      const refreshResult = await safeRefreshSession();
+      if (!refreshResult.success || !refreshResult.session) {
         return { data: null, error: new Error("Session refresh failed") };
       }
-      session = refreshData.session;
+      session = refreshResult.session;
     }
 
     const buildOptions = () => ({
       ...options,
       headers: {
         ...(options?.headers ?? {}),
-        // Force the user JWT (prevents anon-token calls that lead to Unauthorized)
         Authorization: `Bearer ${session.access_token}`,
       },
     });
@@ -51,11 +47,12 @@ export async function invokeWithRetry<T = any>(
         msg.toLowerCase().includes("jwt expired");
 
       if (isAuthError) {
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshData.session) {
+        console.log("[invokeWithRetry] Auth error, attempting refresh...");
+        const refreshResult = await safeRefreshSession();
+        if (!refreshResult.success || !refreshResult.session) {
           return { data: null, error: new Error(first.error.message) };
         }
-        session = refreshData.session;
+        session = refreshResult.session;
 
         const retry = await supabase.functions.invoke(functionName, buildOptions());
         if (retry.error) {
@@ -76,33 +73,26 @@ export async function invokeWithRetry<T = any>(
 
 /**
  * Ensures the session is valid before making API calls.
- * Call this before critical operations that require authentication.
+ * Uses centralized session manager for refresh.
  */
 export async function ensureValidSession(): Promise<boolean> {
   try {
-    const { data: { session }, error } = await supabase.auth.getSession();
+    const session = await getCurrentSession();
     
-    if (error || !session) {
+    if (!session) {
       return false;
     }
     
-    // Check if token is expired or expiring soon (within 60 seconds)
-    const expiresAt = session.expires_at;
-    const now = Math.floor(Date.now() / 1000);
-    const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
-    
-    if (timeUntilExpiry < 60) {
-      console.log("Token expiring soon, refreshing...");
-      const { error: refreshError } = await supabase.auth.refreshSession();
-      if (refreshError) {
-        console.error("Failed to refresh session:", refreshError);
-        return false;
-      }
+    // Check if token is expiring soon (within 60 seconds)
+    if (isTokenExpiringSoon(session, 60)) {
+      console.log("[ensureValidSession] Token expiring soon, refreshing...");
+      const result = await safeRefreshSession();
+      return result.success;
     }
     
     return true;
   } catch (err) {
-    console.error("Error checking session:", err);
+    console.error("[ensureValidSession] Error:", err);
     return false;
   }
 }

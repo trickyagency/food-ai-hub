@@ -183,7 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -191,6 +191,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         return { success: false, error: error.message };
       }
+
+      // Immediately set session state to prevent race conditions
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+
+      // Small delay to let React state propagate before navigation
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       return { success: true };
     } catch (error: any) {
