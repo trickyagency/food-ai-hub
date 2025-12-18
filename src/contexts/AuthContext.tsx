@@ -28,41 +28,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const logAuditEvent = async (eventType: string, eventDetails?: any) => {
+  // Silent audit logging that includes user_id and never throws
+  const logAuditEvent = async (eventType: string, userId?: string, eventDetails?: any) => {
     try {
+      // Silently skip if no user_id provided (prevents RLS errors)
+      if (!userId) {
+        console.log('Audit event skipped (no user_id):', eventType);
+        return;
+      }
       await supabase.from('audit_logs').insert({
         event_type: eventType,
         event_details: eventDetails,
+        user_id: userId,
       });
     } catch (error) {
-      console.error('Failed to log audit event:', error);
+      // Always fail silently - never disrupt auth flow
+      console.warn('Audit log failed (non-critical):', eventType, error);
     }
   };
 
   useEffect(() => {
+    // Track if we've set initialized (only do it once from getSession)
+    let hasInitialized = false;
+
     // IMPORTANT: listener first, then getSession (Supabase best practice)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      console.log('Auth state changed:', event);
+      console.log('Auth state changed:', event, currentSession?.user?.id);
 
       // Keep this callback synchronous (no awaits) to avoid deadlocks.
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
 
-      // Mark initialized once we receive our first auth event
-      setIsInitialized(true);
-      setLoading(false);
+      // Don't set isInitialized here - let getSession handle it to avoid race conditions
 
-      // Audit logs (defer any Supabase calls)
-      if (event === 'SIGNED_IN') {
-        setTimeout(() => logAuditEvent('login', { method: 'email' }), 0);
+      // Audit logs (defer any Supabase calls, include user_id)
+      const userId = currentSession?.user?.id;
+      if (event === 'SIGNED_IN' && userId) {
+        setTimeout(() => logAuditEvent('login', userId, { method: 'email' }), 0);
       } else if (event === 'SIGNED_OUT') {
-        setTimeout(() => logAuditEvent('logout'), 0);
+        // For sign out, we may not have the user anymore, skip audit
+        console.log('User signed out');
       }
     });
 
-    // Then read existing session
+    // Then read existing session - this is the source of truth for initialization
     supabase.auth
       .getSession()
       .then(({ data: { session }, error }) => {
@@ -73,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
+        console.log('Initial session loaded:', session?.user?.id ?? 'no session');
         setSession(session);
         setUser(session?.user ?? null);
       })
@@ -82,8 +94,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
       })
       .finally(() => {
-        setIsInitialized(true);
-        setLoading(false);
+        // Only set initialized once, from getSession (not from onAuthStateChange)
+        if (!hasInitialized) {
+          hasInitialized = true;
+          setIsInitialized(true);
+          setLoading(false);
+          console.log('Auth fully initialized');
+        }
       });
 
     return () => subscription.unsubscribe();
@@ -146,7 +163,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
   const logout = async () => {
-    await logAuditEvent('logout');
+    const userId = user?.id;
+    if (userId) {
+      await logAuditEvent('logout', userId);
+    }
     await supabase.auth.signOut();
   };
 
@@ -160,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: error.message };
       }
 
-      await logAuditEvent('password_reset_requested', { email });
+      await logAuditEvent('password_reset_requested', user?.id, { email });
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message || 'Password reset failed' };
@@ -194,7 +214,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Don't fail the whole operation if profile update fails
       }
 
-      await logAuditEvent('account_setup_completed', { email: user.email });
+      await logAuditEvent('account_setup_completed', user.id, { email: user.email });
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message || 'Account setup failed' };
@@ -211,7 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: error.message };
       }
 
-      await logAuditEvent('2fa_enrollment_started');
+      await logAuditEvent('2fa_enrollment_started', user?.id);
       return { success: true, data };
     } catch (error: any) {
       return { success: false, error: error.message || '2FA enrollment failed' };
@@ -235,7 +255,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: error.message };
       }
 
-      await logAuditEvent('2fa_verified');
+      await logAuditEvent('2fa_verified', user?.id);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message || '2FA verification failed' };
@@ -256,7 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: error.message };
       }
 
-      await logAuditEvent('2fa_unenrolled');
+      await logAuditEvent('2fa_unenrolled', user?.id);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message || '2FA unenrollment failed' };

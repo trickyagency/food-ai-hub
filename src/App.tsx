@@ -4,10 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import RealtimeNotifications from "./components/RealtimeNotifications";
 import OrderNotifications from "./components/OrderNotifications";
-import UploadFailureMonitor from "./components/upload-history/UploadFailureMonitor";
-import SessionTimeoutWarning from "./components/SessionTimeoutWarning";
+import AuthenticatedComponents from "./components/AuthenticatedComponents";
 import { useInactivityTimeout } from "./hooks/useInactivityTimeout";
 import { useAutoSessionExtend } from "./hooks/useAutoSessionExtend";
 import Index from "./pages/Index";
@@ -32,9 +30,8 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AppContent />
-      <SessionTimeoutWarning />
-      <RealtimeNotifications />
-      <UploadFailureMonitor />
+      {/* Auth-dependent components wrapped in conditional renderer */}
+      <AuthenticatedComponents />
       <Toaster />
       <Sonner />
       <BrowserRouter>
