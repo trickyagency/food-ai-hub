@@ -11,14 +11,19 @@ let refreshPromise: Promise<{ success: boolean; session: any }> | null = null;
  * which can cause rate limiting and token revocation.
  */
 export async function safeRefreshSession(): Promise<{ success: boolean; session: any }> {
+  // First check if there's an existing session to refresh
+  const { data: { session: currentSession } } = await supabase.auth.getSession();
+  if (!currentSession) {
+    // No session to refresh - this is expected on auth page
+    return { success: false, session: null };
+  }
+
   // If already refreshing, wait for existing refresh
   if (isRefreshing && refreshPromise) {
-    console.log("[SessionManager] Refresh already in progress, waiting...");
     return refreshPromise;
   }
 
   isRefreshing = true;
-  console.log("[SessionManager] Starting session refresh...");
 
   refreshPromise = (async () => {
     try {
@@ -29,13 +34,11 @@ export async function safeRefreshSession(): Promise<{ success: boolean; session:
         return { success: false, session: null };
       }
       
-      console.log("[SessionManager] Refresh successful");
       return { success: true, session: data.session };
     } catch (err) {
       console.error("[SessionManager] Refresh error:", err);
       return { success: false, session: null };
     } finally {
-      // Reset after a small delay to allow subsequent refreshes
       setTimeout(() => {
         isRefreshing = false;
         refreshPromise = null;
