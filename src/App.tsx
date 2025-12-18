@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// App content that requires AuthProvider context
 const AppContent = () => {
   useInactivityTimeout(30); // 30 minute inactivity timeout when "Remember me" is unchecked
   useAutoSessionExtend(); // Automatically extends session in background when user is active
