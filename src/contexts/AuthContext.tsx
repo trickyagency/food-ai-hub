@@ -40,68 +40,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    let initialAuthDone = false;
+    // IMPORTANT: listener first, then getSession (Supabase best practice)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      console.log('Auth state changed:', event);
 
-    // Set up auth state listener - MUST be synchronous per Supabase best practices
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        console.log('Auth state changed:', event);
-        
-        // Only update state after initial auth is done to avoid race conditions
-        if (initialAuthDone) {
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          
-          // If signed out, clear loading
-          if (event === 'SIGNED_OUT') {
-            setLoading(false);
-          }
-        }
-        
-        // Log authentication events - defer to avoid deadlock
-        if (event === 'SIGNED_IN') {
-          setTimeout(() => logAuditEvent('login', { method: 'email' }), 0);
-        } else if (event === 'SIGNED_OUT') {
-          setTimeout(() => logAuditEvent('logout'), 0);
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed successfully');
-          // Update session with new token
-          if (currentSession) {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-          }
-        }
+      // Keep this callback synchronous (no awaits) to avoid deadlocks.
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+
+      // Mark initialized once we receive our first auth event
+      setIsInitialized(true);
+      setLoading(false);
+
+      // Audit logs (defer any Supabase calls)
+      if (event === 'SIGNED_IN') {
+        setTimeout(() => logAuditEvent('login', { method: 'email' }), 0);
+      } else if (event === 'SIGNED_OUT') {
+        setTimeout(() => logAuditEvent('logout'), 0);
       }
-    );
+    });
 
-    // Check for existing session - let Supabase handle refresh automatically
-    const initSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
+    // Then read existing session
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
         if (error) {
           console.error('Session error:', error);
           setSession(null);
           setUser(null);
           return;
         }
-        
-        // Simply use the session as-is - Supabase handles token refresh automatically
+
         setSession(session);
         setUser(session?.user ?? null);
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error('Auth initialization error:', err);
         setSession(null);
         setUser(null);
-      } finally {
-        setLoading(false);
+      })
+      .finally(() => {
         setIsInitialized(true);
-      }
-    };
-
-    initSession().then(() => {
-      initialAuthDone = true;
-    });
+        setLoading(false);
+      });
 
     return () => subscription.unsubscribe();
   }, []);
