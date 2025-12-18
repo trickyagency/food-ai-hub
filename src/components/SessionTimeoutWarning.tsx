@@ -40,9 +40,9 @@ const SessionTimeoutWarning = () => {
     }
 
     const checkExpiry = () => {
-      // Grace period: don't check for 10 seconds after login
+      // Grace period: don't check for 30 seconds after login
       const timeSinceLogin = Date.now() - loginTimeRef.current;
-      if (timeSinceLogin < 10000) {
+      if (timeSinceLogin < 30000) {
         return;
       }
 
@@ -54,15 +54,11 @@ const SessionTimeoutWarning = () => {
       const now = Math.floor(Date.now() / 1000);
       const remaining = session.expires_at - now;
 
-      // Show warning when 5 minutes (300 seconds) or less remaining
-      if (remaining <= 300 && remaining > 0) {
+      // Show warning only when 2 minutes (120 seconds) or less remaining
+      // This is just a warning - no auto-logout
+      if (remaining <= 120 && remaining > 0) {
         setShowWarning(true);
         setTimeRemaining(remaining);
-      } else if (remaining <= 0) {
-        // Session might be expired - but don't auto-logout
-        // The auto-session-extend hook should handle refreshing
-        // Only show warning if we haven't already
-        setShowWarning(false);
       } else {
         setShowWarning(false);
       }
