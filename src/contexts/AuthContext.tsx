@@ -74,77 +74,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session and refresh if needed
+    // Check for existing session - let Supabase handle refresh automatically
     const initSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Session error:', error);
-          // Clear invalid session
-          await supabase.auth.signOut();
           setSession(null);
           setUser(null);
           return;
         }
         
-        if (!session) {
-          setSession(null);
-          setUser(null);
-          return;
-        }
-
-        // Check if token is already expired or about to expire
-        const expiresAt = session.expires_at;
-
-        // Some providers/flows can temporarily return a session without expires_at while hydrating.
-        // Don't treat that as expired (prevents false sign-outs right after login).
-        if (!expiresAt) {
-          setSession(session);
-          setUser(session?.user ?? null);
-          return;
-        }
-
-        const now = Math.floor(Date.now() / 1000);
-        const timeUntilExpiry = expiresAt - now;
-        
-        console.log('Token expires in:', timeUntilExpiry, 'seconds');
-        
-        if (timeUntilExpiry <= 0) {
-          // Token already expired, try to refresh using singleton
-          console.log('Token expired, attempting refresh...');
-          const result = await safeRefreshSession();
-          if (!result.success) {
-            console.error('Failed to refresh expired session');
-            await supabase.auth.signOut();
-            setSession(null);
-            setUser(null);
-          } else {
-            console.log('Session refreshed successfully');
-            setSession(result.session);
-            setUser(result.session?.user ?? null);
-          }
-        } else if (timeUntilExpiry < 300) {
-          // Token expires in less than 5 minutes, proactively refresh using singleton
-          console.log('Token expiring soon, proactively refreshing...');
-          const result = await safeRefreshSession();
-          if (!result.success) {
-            console.error('Failed to refresh session');
-            // Use existing session if refresh fails
-            setSession(session);
-            setUser(session?.user ?? null);
-          } else if (result.session) {
-            console.log('Session proactively refreshed');
-            setSession(result.session);
-            setUser(result.session?.user ?? null);
-          } else {
-            setSession(session);
-            setUser(session?.user ?? null);
-          }
-        } else {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
+        // Simply use the session as-is - Supabase handles token refresh automatically
+        setSession(session);
+        setUser(session?.user ?? null);
       } catch (err) {
         console.error('Auth initialization error:', err);
         setSession(null);
