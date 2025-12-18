@@ -52,9 +52,13 @@ const Auth = () => {
 
     // Listen for auth state changes (when Supabase processes the token)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
-        // User clicked invite/recovery link - show setup form
-        if (session && mode !== 'setup') {
+      // Only enter setup flow for invite/recovery/magiclink tokens (avoid showing setup on normal login)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const tokenType = hashParams.get('type');
+      const isSetupToken = tokenType === 'invite' || tokenType === 'recovery' || tokenType === 'magiclink';
+
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && isSetupToken)) {
+        if (session) {
           setMode('setup');
         }
       }
