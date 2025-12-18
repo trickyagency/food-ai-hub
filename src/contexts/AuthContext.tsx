@@ -96,8 +96,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // Check if token is already expired or about to expire
         const expiresAt = session.expires_at;
+
+        // Some providers/flows can temporarily return a session without expires_at while hydrating.
+        // Don't treat that as expired (prevents false sign-outs right after login).
+        if (!expiresAt) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          return;
+        }
+
         const now = Math.floor(Date.now() / 1000);
-        const timeUntilExpiry = expiresAt ? expiresAt - now : 0;
+        const timeUntilExpiry = expiresAt - now;
         
         console.log('Token expires in:', timeUntilExpiry, 'seconds');
         
