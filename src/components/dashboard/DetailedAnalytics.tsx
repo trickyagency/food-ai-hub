@@ -96,24 +96,16 @@ const DetailedAnalytics = ({ calls }: DetailedAnalyticsProps) => {
     }
   });
 
-  // Call outcome distribution
+  // Call outcome distribution - only include categories with actual calls
+  const successfulCount = calls.filter((c) => c.status === "ended" && c.endedReason !== "customer-did-not-answer").length;
+  const noAnswerCount = calls.filter((c) => c.endedReason === "customer-did-not-answer").length;
+  const failedCount = calls.filter((c) => c.endedReason?.includes("error")).length;
+
   const outcomeData = [
-    {
-      name: "Successful",
-      value: calls.filter((c) => c.status === "ended" && c.endedReason !== "customer-did-not-answer").length,
-      color: "#10B981",
-    },
-    {
-      name: "No Answer",
-      value: calls.filter((c) => c.endedReason === "customer-did-not-answer").length,
-      color: "#F59E0B",
-    },
-    {
-      name: "Failed",
-      value: calls.filter((c) => c.endedReason?.includes("error")).length,
-      color: "#EF4444",
-    },
-  ];
+    { name: "Successful", value: successfulCount, color: "#10B981" },
+    { name: "No Answer", value: noAnswerCount, color: "#F59E0B" },
+    { name: "Failed", value: failedCount, color: "#EF4444" },
+  ].filter((item) => item.value > 0); // Only show categories with actual calls
 
   return (
     <div className="space-y-6">
