@@ -2,12 +2,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
 import { DollarSign, Radio } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface CostBreakdownWidgetProps {
   analytics: VapiAnalytics;
 }
 
 const CostBreakdownWidget = ({ analytics }: CostBreakdownWidgetProps) => {
+  const { canViewCosts } = useUserRole();
+  
+  // Only render for owners
+  if (!canViewCosts) {
+    return null;
+  }
+  
   const totalCost = analytics.totalCost || 0;
   
   const costItems = [
@@ -33,7 +41,7 @@ const CostBreakdownWidget = ({ analytics }: CostBreakdownWidgetProps) => {
       textColor: "text-green-700 dark:text-green-300",
     },
     {
-      label: "Vapi Platform",
+      label: "Platform",
       value: analytics.costBreakdown.vapi,
       color: "bg-orange-500",
       lightBg: "bg-orange-100 dark:bg-orange-950/30",

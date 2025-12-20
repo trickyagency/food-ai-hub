@@ -12,6 +12,7 @@ import CallDetailDialog from "./CallDetailDialog";
 import SwipeableCallRow from "./SwipeableCallRow";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatDuration } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface VapiCallLogsTableProps {
   calls: VapiCall[];
@@ -19,6 +20,7 @@ interface VapiCallLogsTableProps {
 }
 
 const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
+  const { canViewCosts } = useUserRole();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCall, setSelectedCall] = useState<VapiCall | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -195,7 +197,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                   <TableHead>Type</TableHead>
                   <TableHead>Phone Number</TableHead>
                   <TableHead>Duration</TableHead>
-                  <TableHead>Cost</TableHead>
+                  {canViewCosts && <TableHead>Cost</TableHead>}
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden md:table-cell">Summary</TableHead>
                   <TableHead>Time</TableHead>
@@ -205,7 +207,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={canViewCosts ? 8 : 7} className="text-center py-8">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         <span className="text-muted-foreground">Loading calls...</span>
@@ -214,7 +216,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                   </TableRow>
                 ) : currentCalls.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={canViewCosts ? 8 : 7} className="text-center py-8 text-muted-foreground">
                       No calls found. Make some calls to see them here.
                     </TableCell>
                   </TableRow>
@@ -239,9 +241,11 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                         <TableCell>
                           {call.duration ? formatDuration(call.duration) : "N/A"}
                         </TableCell>
-                        <TableCell className="font-semibold">
-                          ${(call.cost || 0).toFixed(4)}
-                        </TableCell>
+                        {canViewCosts && (
+                          <TableCell className="font-semibold">
+                            ${(call.cost || 0).toFixed(4)}
+                          </TableCell>
+                        )}
                         <TableCell>
                           {getStatusBadge(call.status, call.endedReason)}
                         </TableCell>

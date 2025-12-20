@@ -85,6 +85,7 @@ export const useUserRole = () => {
   const canMakeCalls = role === "owner" || role === "admin" || role === "manager";
   const canViewCallLogs = role === "owner" || role === "admin" || role === "manager" || role === "staff";
   const canViewDashboard = true; // All roles can view dashboard metrics
+  const canViewCosts = role === "owner"; // Only owner can see cost information
   const isOwner = role === "owner";
   const isAdmin = role === "admin";
 
@@ -101,6 +102,7 @@ export const useUserRole = () => {
     canMakeCalls,
     canViewCallLogs,
     canViewDashboard,
+    canViewCosts,
     isOwner,
     isAdmin,
   };
