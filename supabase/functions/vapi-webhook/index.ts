@@ -195,6 +195,8 @@ serve(async (req) => {
           status: "confirmed",
           special_instructions: orderData.special_instructions || null,
           estimated_time: parseInt(orderData.estimated_time) || 30,
+          delivery_address: orderData.delivery_address || orderData.address || null,
+          order_type: orderData.order_type || (orderData.delivery_address || orderData.address ? 'delivery' : 'pickup'),
         };
 
         // Validate required fields
@@ -242,12 +244,19 @@ serve(async (req) => {
                 Authorization: `Bearer ${supabaseServiceKey}`,
               },
               body: JSON.stringify({
-                to: orderRecord.customer_number,
-                orderId: order.id,
-                customerName: orderRecord.customer_name,
-                items: orderRecord.items,
-                total: orderRecord.total,
-                estimatedTime: orderRecord.estimated_time,
+                customerNumber: orderRecord.customer_number,
+                orderDetails: {
+                  orderId: order.id,
+                  customerName: orderRecord.customer_name,
+                  items: orderRecord.items,
+                  subtotal: orderRecord.subtotal,
+                  tax: orderRecord.tax,
+                  total: orderRecord.total,
+                  estimatedTime: orderRecord.estimated_time,
+                  specialInstructions: orderRecord.special_instructions,
+                  deliveryAddress: orderRecord.delivery_address,
+                  orderType: orderRecord.order_type,
+                },
                 callId: callId,
               }),
             }

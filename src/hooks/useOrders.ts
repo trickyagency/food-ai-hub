@@ -26,6 +26,8 @@ export interface Order {
   user_id: string | null;
   created_at: string | null;
   updated_at: string | null;
+  delivery_address: string | null;
+  order_type: string | null;
 }
 
 export interface OrderStats {

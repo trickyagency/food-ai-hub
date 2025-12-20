@@ -24,6 +24,8 @@ interface SMSRequest {
     customerName?: string;
     orderId?: string;
     specialInstructions?: string;
+    deliveryAddress?: string;
+    orderType?: 'pickup' | 'delivery';
   };
   callId?: string;
   userId?: string;
@@ -102,6 +104,12 @@ Total: $${orderDetails.total?.toFixed(2) || "See receipt"}`;
       ? `\nNote: ${orderDetails.specialInstructions}` 
       : "";
 
+    // Build order type and address section
+    const orderType = orderDetails.orderType || 'pickup';
+    const deliverySection = orderType === 'delivery' && orderDetails.deliveryAddress
+      ? `\n📍 Delivery to: ${orderDetails.deliveryAddress}`
+      : `\n📍 Pickup Order`;
+
     const messageBody = `🍕 Order Confirmed!
 
 Hi ${customerName},
@@ -109,11 +117,11 @@ Hi ${customerName},
 Order #${orderId}:
 ${formattedItems}
 
-${pricingSection}
+${pricingSection}${deliverySection}
 Est. Ready: ${estimatedTime} mins${instructionsSection}
 
 Thank you for ordering!
-- Smartflow Restaurant`;
+- Voice AI SmartFlow Automation`;
 
     // Create SMS log entry first (pending status)
     const { data: logEntry, error: logError } = await supabase

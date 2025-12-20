@@ -268,9 +268,11 @@ export type Database = {
           created_at: string | null
           customer_name: string | null
           customer_number: string
+          delivery_address: string | null
           estimated_time: number | null
           id: string
           items: Json
+          order_type: string | null
           special_instructions: string | null
           status: string | null
           subtotal: number | null
@@ -284,9 +286,11 @@ export type Database = {
           created_at?: string | null
           customer_name?: string | null
           customer_number: string
+          delivery_address?: string | null
           estimated_time?: number | null
           id?: string
           items?: Json
+          order_type?: string | null
           special_instructions?: string | null
           status?: string | null
           subtotal?: number | null
@@ -300,9 +304,11 @@ export type Database = {
           created_at?: string | null
           customer_name?: string | null
           customer_number?: string
+          delivery_address?: string | null
           estimated_time?: number | null
           id?: string
           items?: Json
+          order_type?: string | null
           special_instructions?: string | null
           status?: string | null
           subtotal?: number | null
