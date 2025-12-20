@@ -53,6 +53,32 @@ serve(async (req) => {
       throw new Error("Customer phone number is required");
     }
 
+    // Validate phone number format - must be real digits, not placeholder text
+    const cleanedNumber = customerNumber.replace(/\D/g, '');
+    const hasPlaceholder = /[A-Za-z]/.test(customerNumber) || customerNumber.includes('XXXX');
+    const isFake555Number = cleanedNumber.includes('555') && cleanedNumber.length >= 10;
+    
+    if (hasPlaceholder || isFake555Number) {
+      console.log("Skipping SMS - invalid/test phone number:", customerNumber);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "SMS skipped - test/invalid phone number detected",
+          skipped: true,
+          reason: "Phone number appears to be a test number (contains placeholders or 555 prefix)",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // Basic E.164 format validation
+    if (cleanedNumber.length < 10 || cleanedNumber.length > 15) {
+      throw new Error(`Invalid phone number format: ${customerNumber}. Expected 10-15 digits.`);
+    }
+
     const customerName = orderDetails.customerName || "Valued Customer";
     const orderId = orderDetails.orderId || "N/A";
     const orderType = orderDetails.orderType || 'pickup';
