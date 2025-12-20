@@ -180,6 +180,36 @@ export const useOrders = (options: UseOrdersOptions = {}) => {
       // Log status change to history
       await logStatusChange(orderId, previousStatus, newStatus, userId, userEmail);
 
+      // Send completion SMS when order is marked as completed
+      if (newStatus === 'completed' && originalOrder.customer_number) {
+        try {
+          console.log("Sending completion SMS for order:", orderId);
+          const { error: smsError } = await supabase.functions.invoke('twilio-sms-completion', {
+            body: {
+              customerNumber: originalOrder.customer_number,
+              orderDetails: {
+                orderId: orderId.slice(0, 8).toUpperCase(),
+                customerName: originalOrder.customer_name,
+                orderType: originalOrder.order_type || 'pickup',
+                deliveryAddress: originalOrder.delivery_address,
+                items: originalOrder.items,
+                total: originalOrder.total,
+              },
+              userId: userId,
+            }
+          });
+          
+          if (smsError) {
+            console.error("Error sending completion SMS:", smsError);
+          } else {
+            console.log("Completion SMS sent successfully");
+          }
+        } catch (smsErr) {
+          console.error("Failed to send completion SMS:", smsErr);
+          // Don't fail the status update if SMS fails
+        }
+      }
+
       // Recalculate stats
       setOrders(prev => {
         const updated = prev.map(o => 

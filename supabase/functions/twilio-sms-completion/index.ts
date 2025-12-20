@@ -10,47 +10,19 @@ interface OrderItem {
   name: string;
   quantity: number;
   price?: number;
-  modifications?: string;
 }
 
-interface SMSRequest {
+interface CompletionRequest {
   customerNumber: string;
   orderDetails: {
-    items?: OrderItem[] | string[];
-    subtotal?: number;
-    tax?: number;
-    total?: number;
-    estimatedTime?: number;
+    orderId: string;
     customerName?: string;
-    orderId?: string;
-    specialInstructions?: string;
-    deliveryAddress?: string;
     orderType?: 'pickup' | 'delivery';
+    deliveryAddress?: string;
+    items?: OrderItem[] | string[];
+    total?: number;
   };
-  callId?: string;
   userId?: string;
-}
-
-// Format order items for SMS display
-function formatOrderItems(items: OrderItem[] | string[] | undefined): string {
-  if (!items || items.length === 0) {
-    return "Your order items";
-  }
-
-  return items.map(item => {
-    if (typeof item === "string") {
-      return `• ${item}`;
-    }
-    
-    let line = `• ${item.quantity}x ${item.name}`;
-    if (item.price) {
-      line += ` - $${(item.price * item.quantity).toFixed(2)}`;
-    }
-    if (item.modifications) {
-      line += `\n  (${item.modifications})`;
-    }
-    return line;
-  }).join("\n");
 }
 
 serve(async (req) => {
@@ -71,9 +43,9 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { customerNumber, orderDetails, callId, userId }: SMSRequest = await req.json();
+    const { customerNumber, orderDetails, userId }: CompletionRequest = await req.json();
 
-    console.log("Sending SMS to:", customerNumber);
+    console.log("Sending completion SMS to:", customerNumber);
     console.log("Order details:", JSON.stringify(orderDetails, null, 2));
 
     // Validate customer number
@@ -81,55 +53,36 @@ serve(async (req) => {
       throw new Error("Customer phone number is required");
     }
 
-    // Format the order confirmation message with enhanced details
     const customerName = orderDetails.customerName || "Valued Customer";
-    const formattedItems = formatOrderItems(orderDetails.items);
-    const estimatedTime = orderDetails.estimatedTime || 30;
-    const orderId = orderDetails.orderId || `ORD-${Date.now().toString(36).toUpperCase()}`;
+    const orderId = orderDetails.orderId || "N/A";
+    const orderType = orderDetails.orderType || 'pickup';
 
-    // Build pricing section
-    let pricingSection = "";
-    if (orderDetails.subtotal && orderDetails.tax) {
-      pricingSection = `Subtotal: $${orderDetails.subtotal.toFixed(2)}
-Tax: $${orderDetails.tax.toFixed(2)}
-Total: $${orderDetails.total?.toFixed(2) || "See receipt"}`;
-    } else if (orderDetails.total) {
-      pricingSection = `Total: $${orderDetails.total.toFixed(2)}`;
+    // Build order type specific message
+    let readyMessage = "";
+    if (orderType === 'delivery') {
+      readyMessage = "Your order is on its way to you!";
     } else {
-      pricingSection = "Total: See receipt";
+      readyMessage = "Please visit us to pick up your order.";
     }
 
-    // Build special instructions section
-    const instructionsSection = orderDetails.specialInstructions 
-      ? `\nNote: ${orderDetails.specialInstructions}` 
-      : "";
-
-    // Build order type and address section
-    const orderType = orderDetails.orderType || 'pickup';
-    const deliverySection = orderType === 'delivery' && orderDetails.deliveryAddress
-      ? `\n📍 Delivery to: ${orderDetails.deliveryAddress}`
-      : `\n📍 Pickup Order`;
-
-    const messageBody = `🍕 Order Confirmed!
+    const messageBody = `✅ Your Order is Ready!
 
 Hi ${customerName},
 
-Thank you so much for your order! We truly appreciate your business.
+Great news! Your order #${orderId} is now ready for ${orderType}!
 
-Order #${orderId}:
-${formattedItems}
+${readyMessage}
 
-${pricingSection}${deliverySection}
-Est. Ready: ${estimatedTime} mins${instructionsSection}
+Thank you for choosing us! We hope you enjoy your order.
 
-We're preparing your order with care!
+💬 We'd love to hear from you! Please take a moment to share your experience and feedback.
+
 - Voice AI SmartFlow Automation`;
 
-    // Create SMS log entry first (pending status)
+    // Create SMS log entry
     const { data: logEntry, error: logError } = await supabase
       .from("sms_logs")
       .insert({
-        call_id: callId,
         customer_number: customerNumber,
         message_content: messageBody,
         order_details: orderDetails,
@@ -190,12 +143,12 @@ We're preparing your order with care!
       throw new Error(twilioResult.message || "Failed to send SMS");
     }
 
-    console.log("SMS sent successfully:", twilioResult.sid);
+    console.log("Completion SMS sent successfully:", twilioResult.sid);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "SMS sent successfully",
+        message: "Completion SMS sent successfully",
         twilioSid: twilioResult.sid,
         logId: logEntry?.id,
       }),
@@ -205,7 +158,7 @@ We're preparing your order with care!
       }
     );
   } catch (error) {
-    console.error("Error sending SMS:", error);
+    console.error("Error sending completion SMS:", error);
     return new Response(
       JSON.stringify({
         success: false,
