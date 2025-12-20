@@ -63,12 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Don't set isInitialized here - let getSession handle it to avoid race conditions
 
-      // Audit logs (defer any Supabase calls, include user_id)
-      const userId = currentSession?.user?.id;
-      if (event === 'SIGNED_IN' && userId) {
-        setTimeout(() => logAuditEvent('login', userId, { method: 'email' }), 0);
-      } else if (event === 'SIGNED_OUT') {
-        // For sign out, we may not have the user anymore, skip audit
+      // Note: Login audit is handled in login() function to avoid spam on session refresh
+      if (event === 'SIGNED_OUT') {
         console.log('User signed out');
       }
     });
@@ -150,6 +146,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.session) {
         setSession(data.session);
         setUser(data.session.user);
+        
+        // Log audit event only on actual login (not session refresh)
+        logAuditEvent('login', data.session.user.id, { method: 'email' });
       }
 
       // Small delay to let React state propagate before navigation
