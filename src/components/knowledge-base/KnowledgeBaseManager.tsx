@@ -202,7 +202,7 @@ const KnowledgeBaseManager = () => {
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-border/50 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Files in Vapi</CardTitle>
+              <CardTitle className="text-sm font-medium">Synced Files</CardTitle>
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -303,9 +303,9 @@ const KnowledgeBaseManager = () => {
               <FileText className="w-5 h-5 text-primary" />
               Available Files
             </CardTitle>
-            <CardDescription>
-              Files synced to Vapi but not yet added to the knowledge base
-            </CardDescription>
+          <CardDescription>
+            Synced files not yet added to the knowledge base
+          </CardDescription>
           </CardHeader>
           <CardContent>
             {availableFiles.length === 0 ? (
@@ -329,7 +329,7 @@ const KnowledgeBaseManager = () => {
                         </p>
                       </div>
                       <Badge variant="outline" className="border-green-500 text-green-500">
-                        🟢 Synced to Vapi
+                        🟢 Synced
                       </Badge>
                     </div>
                     <Button
@@ -383,7 +383,7 @@ const KnowledgeBaseManager = () => {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
             <p>1. Upload files in the <strong>Database Files</strong> section</p>
-            <p>2. Files are automatically synced to Vapi</p>
+            <p>2. Files are automatically synced to the AI service</p>
             <p>3. Add files to the knowledge base using the <strong>Add to KB</strong> button</p>
             <p>4. All files in the knowledge base are used by the {assistantName} assistant</p>
             <p>5. The assistant will use these files for answering questions</p>
@@ -398,7 +398,7 @@ const KnowledgeBaseManager = () => {
             <AlertDialogTitle>Remove file from Knowledge Base?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove <strong>{fileToRemove?.file_name}</strong> from the
-              knowledge base? The file will remain in Vapi storage and can be re-added later.
+              knowledge base? The file will remain in storage and can be re-added later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

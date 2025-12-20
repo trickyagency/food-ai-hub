@@ -17,7 +17,7 @@ const KnowledgeBase = () => {
                 Knowledge Base Manager
               </h1>
               <p className="text-muted-foreground mt-2">
-                Create and manage Vapi AI knowledge bases with your uploaded files
+                Create and manage AI knowledge bases with your uploaded files
               </p>
             </div>
           </div>
