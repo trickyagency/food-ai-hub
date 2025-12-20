@@ -160,7 +160,7 @@ const Auth = () => {
     switch (mode) {
       case 'setup': return "Set your password and name to get started";
       case 'reset': return "Enter your email to receive a password reset link";
-      default: return "Sign in to VOICE AI Smartflow Automation";
+      default: return "Sign in to Voice AI SmartFlow Automation";
     }
   };
 

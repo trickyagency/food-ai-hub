@@ -58,8 +58,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-sm sm:text-base text-foreground tracking-tight">VOICE AI</h1>
-            <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Smartflow Automation</p>
+            <h1 className="font-bold text-sm sm:text-base text-foreground tracking-tight">Voice AI</h1>
+            <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">SmartFlow Automation</p>
           </div>
         </Link>
       </div>
@@ -121,7 +121,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <LayoutDashboard className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-sm text-foreground">VOICE AI</h1>
+            <h1 className="font-bold text-sm text-foreground">Voice AI</h1>
           </div>
         </Link>
 

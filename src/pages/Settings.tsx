@@ -43,9 +43,9 @@ const Settings = () => {
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
-            <TabsTrigger value="vapi" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="voice-ai" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Phone className="h-4 w-4" />
-              <span className="hidden sm:inline">Vapi</span>
+              <span className="hidden sm:inline">Voice AI</span>
             </TabsTrigger>
             {canManageUsers && (
               <TabsTrigger value="users" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -79,7 +79,7 @@ const Settings = () => {
             <EmailNotifications />
           </TabsContent>
 
-          <TabsContent value="vapi">
+          <TabsContent value="voice-ai">
             <VapiSettings />
           </TabsContent>
 
