@@ -35,7 +35,9 @@ import {
   Loader2,
   MessageSquare,
   History,
-  ChevronDown
+  ChevronDown,
+  MapPin,
+  Package
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrderStatusBadge } from "./OrderStatusBadge";
@@ -149,13 +151,28 @@ export const OrderDetailDialogEnhanced = ({
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <FileText className="w-5 h-5 text-muted-foreground" />
+                {order.order_type === 'delivery' ? (
+                  <MapPin className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <Package className="w-5 h-5 text-muted-foreground" />
+                )}
                 <div>
-                  <p className="text-xs text-muted-foreground">Order ID</p>
-                  <p className="font-medium text-xs">{order.id.slice(0, 8)}...</p>
+                  <p className="text-xs text-muted-foreground">Order Type</p>
+                  <p className="font-medium capitalize">{order.order_type || 'Pickup'}</p>
                 </div>
               </div>
             </div>
+
+            {/* Delivery Address */}
+            {order.order_type === 'delivery' && order.delivery_address && (
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <MapPin className="w-5 h-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-xs text-muted-foreground">Delivery Address</p>
+                  <p className="font-medium">{order.delivery_address}</p>
+                </div>
+              </div>
+            )}
 
             <Separator />
 

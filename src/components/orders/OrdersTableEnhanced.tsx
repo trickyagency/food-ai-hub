@@ -42,7 +42,9 @@ import {
   Clock,
   AlertCircle,
   CheckSquare,
-  X
+  X,
+  MapPin,
+  Package
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { DateRange } from "react-day-picker";
@@ -423,6 +425,7 @@ export const OrdersTableEnhanced = ({
                         />
                       </TableHead>
                       <TableHead className="font-semibold">Customer</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
                       <TableHead className="font-semibold">Items</TableHead>
                       <TableHead className="font-semibold text-right">Total</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
@@ -458,6 +461,21 @@ export const OrdersTableEnhanced = ({
                                 {order.customer_number}
                               </p>
                             </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {order.order_type === 'delivery' ? (
+                              <Badge variant="outline" className="gap-1 text-xs">
+                                <MapPin className="w-3 h-3" />
+                                Delivery
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="gap-1 text-xs">
+                                <Package className="w-3 h-3" />
+                                Pickup
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
