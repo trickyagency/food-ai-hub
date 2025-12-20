@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VapiCall } from "@/hooks/useVapiCalls";
-import { ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import CallDetailDialog from "./CallDetailDialog";
 import SwipeableCallRow from "./SwipeableCallRow";
@@ -19,20 +21,77 @@ interface VapiCallLogsTableProps {
 const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedCall, setSelectedCall] = useState<VapiCall | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const itemsPerPage = 10;
   const isMobile = useIsMobile();
 
-  // Sort calls by date descending (most recent first)
-  const sortedCalls = [...calls].sort((a, b) => {
-    const dateA = new Date(a.createdAt).getTime();
-    const dateB = new Date(b.createdAt).getTime();
-    return dateB - dateA;
-  });
+  // Filter and sort calls
+  const filteredCalls = useMemo(() => {
+    let filtered = [...calls];
 
-  const totalPages = Math.ceil(sortedCalls.length / itemsPerPage);
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((call) => {
+        const phoneNumber = call.customer?.number || call.phoneNumber?.number || "";
+        const customerName = call.customer?.name || "";
+        return (
+          phoneNumber.toLowerCase().includes(query) ||
+          customerName.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((call) => {
+        switch (statusFilter) {
+          case "completed":
+            return call.status === "ended" && call.endedReason !== "customer-did-not-answer";
+          case "no-answer":
+            return call.endedReason === "customer-did-not-answer";
+          case "in-progress":
+            return call.status === "in-progress";
+          case "failed":
+            return call.status !== "ended" && call.status !== "in-progress" && call.status !== "queued" && call.status !== "ringing";
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sort by date descending (most recent first)
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA;
+    });
+  }, [calls, searchQuery, statusFilter]);
+
+  // Reset to page 1 when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "all";
+
+  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCalls = sortedCalls.slice(startIndex, endIndex);
+  const currentCalls = filteredCalls.slice(startIndex, endIndex);
 
   const getStatusBadge = (status: string, endedReason?: string) => {
     if (status === "ended") {
@@ -83,6 +142,52 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
           <CardTitle className="text-lg">Recent Calls</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Search and Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by phone number or name..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => handleSearchChange("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="no-answer">No Answer</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                <X className="w-4 h-4 mr-1" />
+                Clear
+              </Button>
+            )}
+          </div>
+
+          {/* Filter Results Info */}
+          {hasActiveFilters && (
+            <div className="mb-4 text-sm text-muted-foreground">
+              Showing {filteredCalls.length} of {calls.length} calls
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -177,7 +282,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-6">
               <p className="text-sm text-muted-foreground">
-                Showing {startIndex + 1} to {Math.min(endIndex, calls.length)} of {calls.length} calls
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredCalls.length)} of {filteredCalls.length} calls
               </p>
               <div className="flex items-center gap-2">
                 <Button
