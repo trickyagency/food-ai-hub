@@ -66,8 +66,8 @@ const formatPhoneNumber = (value: string, countryCode: CountryCode): string => {
   }
 };
 
-const RECENT_COUNTRIES_KEY = "vapi_recent_country_codes";
-const FAVORITE_COUNTRIES_KEY = "vapi_favorite_country_codes";
+const RECENT_COUNTRIES_KEY = "voice_ai_recent_country_codes";
+const FAVORITE_COUNTRIES_KEY = "voice_ai_favorite_country_codes";
 
 const getRecentCountries = (): string[] => {
   try {
@@ -187,7 +187,7 @@ export const MakeCallDialog = () => {
     }
 
     if (!twilioPhoneNumber) {
-      toast.error("No Twilio phone number configured. Please import your Twilio number in Vapi Dashboard.");
+      toast.error("No phone number configured. Please contact your administrator.");
       return;
     }
 
@@ -229,8 +229,8 @@ export const MakeCallDialog = () => {
       }
 
       if (data?.error) {
-        console.error("Vapi API error:", data);
-        toast.error("Vapi API error: " + (data.details || data.error));
+        console.error("Voice AI service error:", data);
+        toast.error("Voice AI service error: " + (data.details || data.error));
         return;
       }
 

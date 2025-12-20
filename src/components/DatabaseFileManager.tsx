@@ -605,8 +605,8 @@ const DatabaseFileManager = () => {
         .maybeSingle();
 
       if (vapiFile) {
-        console.log('File is synced to Vapi, deleting from Vapi first...');
-        toast.info('Removing file from Vapi...');
+        console.log('File is synced, removing from sync...');
+        toast.info('Removing file from sync...');
 
         try {
           const { data: vapiDeleteData, error: vapiDeleteError } = await invokeWithRetry(
@@ -617,14 +617,14 @@ const DatabaseFileManager = () => {
           );
 
           if (vapiDeleteError) {
-            console.error('Vapi deletion error:', vapiDeleteError);
-            toast.warning('Failed to delete from Vapi, continuing with local deletion...');
+            console.error('Sync deletion error:', vapiDeleteError);
+            toast.warning('Failed to remove from sync, continuing with local deletion...');
           } else if (vapiDeleteData?.deletedFromVapi) {
-            toast.success('File removed from Vapi');
+            toast.success('File removed from sync');
           }
         } catch (vapiError) {
-          console.error('Error deleting from Vapi:', vapiError);
-          toast.warning('Failed to delete from Vapi, continuing with local deletion...');
+          console.error('Error removing from sync:', vapiError);
+          toast.warning('Failed to remove from sync, continuing with local deletion...');
         }
       }
 

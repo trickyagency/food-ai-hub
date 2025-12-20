@@ -23,15 +23,15 @@ export const useVapiConnection = () => {
       }
 
       if (data?.error) {
-        console.error("Vapi API error:", data);
+        console.error("Voice AI service error:", data);
         setIsConnected(false);
-        toast.error("Vapi API error: " + (data.details || data.error));
+        toast.error("Voice AI service error: " + (data.details || data.error));
         return false;
       }
 
       console.log("Connection test successful:", data);
       setIsConnected(true);
-      toast.success("Successfully connected to Vapi API");
+      toast.success("Successfully connected to Voice AI SmartFlow Automation");
       return true;
     } catch (err) {
       console.error("Connection test error:", err);
