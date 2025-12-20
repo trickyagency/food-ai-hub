@@ -195,11 +195,16 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
       })
     : allCalls;
 
+  // Sort calls by timestamp descending (most recent first)
+  const sortedFilteredCalls = [...filteredCalls].sort((a, b) => 
+    b.timestamp.getTime() - a.timestamp.getTime()
+  );
+
   // Calculate pagination
-  const totalPages = Math.ceil(filteredCalls.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedFilteredCalls.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedCalls = showAll ? filteredCalls : filteredCalls.slice(startIndex, endIndex);
+  const paginatedCalls = showAll ? sortedFilteredCalls : sortedFilteredCalls.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -282,7 +287,7 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredCalls.length === 0 ? (
+                {sortedFilteredCalls.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-sm text-muted-foreground">
                       No calls found in the selected date range
@@ -345,10 +350,10 @@ const ProfessionalCallTable = ({ dateRange }: ProfessionalCallTableProps) => {
           </div>
 
           {/* Pagination Controls */}
-          {!showAll && filteredCalls.length > 0 && (
+          {!showAll && sortedFilteredCalls.length > 0 && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/30">
               <div className="text-sm text-muted-foreground">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredCalls.length)} of {filteredCalls.length} calls
+                Showing {startIndex + 1} to {Math.min(endIndex, sortedFilteredCalls.length)} of {sortedFilteredCalls.length} calls
               </div>
               <div className="flex items-center gap-2">
                 <Button
