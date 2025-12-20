@@ -8,11 +8,12 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
-async function sendInvitationEmail(email: string, role: string, setupLink: string, isNewUser: boolean) {
-  try {
-    const subject = isNewUser ? "You've Been Invited to Join Our Team" : "Complete Your Account Setup";
-    
-    const html = `
+function getEmailTemplate(role: string, setupLink: string, isNewUser: boolean) {
+  const subject = isNewUser 
+    ? "Welcome to VOICE AI SmartFlow Automation" 
+    : "Complete Your VOICE AI SmartFlow Setup";
+  
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -20,34 +21,42 @@ async function sendInvitationEmail(email: string, role: string, setupLink: strin
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f5; padding: 40px 20px;">
+<body style="margin: 0; padding: 0; background-color: #0f0f23; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0f0f23; padding: 40px 20px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #1a1a2e; border-radius: 16px; box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3); overflow: hidden;">
+          <!-- Header with gradient -->
           <tr>
-            <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-radius: 12px 12px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">Welcome to the Team!</h1>
+            <td style="padding: 48px 40px 32px; text-align: center; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #06B6D4 100%);">
+              <div style="margin-bottom: 16px;">
+                <span style="font-size: 48px;">🎙️</span>
+              </div>
+              <h1 style="margin: 0 0 8px; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">VOICE AI</h1>
+              <p style="margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 14px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase;">SmartFlow Automation</p>
             </td>
           </tr>
           
           <!-- Content -->
           <tr>
             <td style="padding: 40px;">
-              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+              <h2 style="margin: 0 0 24px; color: #ffffff; font-size: 28px; font-weight: 700; text-align: center;">
+                ${isNewUser ? "Welcome to the Team!" : "Complete Your Setup"}
+              </h2>
+              
+              <p style="margin: 0 0 24px; color: #a1a1aa; font-size: 16px; line-height: 1.7; text-align: center;">
                 ${isNewUser 
-                  ? "You've been invited to join our platform. We're excited to have you on board!" 
-                  : "Your account is ready! Please complete your setup to get started."}
+                  ? "You've been invited to join our intelligent voice automation platform. We're excited to have you on board!" 
+                  : "Your account is ready! Complete your setup to start using our powerful voice automation tools."}
               </p>
               
-              <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px 20px; margin: 24px 0; border-radius: 0 8px 8px 0;">
-                <p style="margin: 0; color: #1e40af; font-size: 14px;">
-                  <strong>Your Role:</strong> <span style="text-transform: capitalize;">${role}</span>
-                </p>
+              <!-- Role Badge -->
+              <div style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%); border-left: 4px solid #7C3AED; padding: 20px 24px; margin: 32px 0; border-radius: 0 12px 12px 0;">
+                <p style="margin: 0; color: #c4b5fd; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Your Role</p>
+                <p style="margin: 8px 0 0; color: #ffffff; font-size: 20px; font-weight: 700; text-transform: capitalize;">${role}</p>
               </div>
               
-              <p style="margin: 0 0 24px; color: #374151; font-size: 16px; line-height: 1.6;">
+              <p style="margin: 0 0 32px; color: #a1a1aa; font-size: 16px; line-height: 1.6; text-align: center;">
                 Click the button below to set up your password and access your account:
               </p>
               
@@ -55,25 +64,48 @@ async function sendInvitationEmail(email: string, role: string, setupLink: strin
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center">
-                    <a href="${setupLink}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);">
+                    <a href="${setupLink}" style="display: inline-block; padding: 18px 48px; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 700; border-radius: 12px; box-shadow: 0 8px 24px rgba(79, 70, 229, 0.5); letter-spacing: 0.5px;">
                       Complete Account Setup
                     </a>
                   </td>
                 </tr>
               </table>
               
-              <p style="margin: 32px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+              <p style="margin: 40px 0 0; color: #71717a; font-size: 14px; line-height: 1.6; text-align: center;">
                 If the button doesn't work, copy and paste this link into your browser:
               </p>
-              <p style="margin: 8px 0 0; word-break: break-all;">
-                <a href="${setupLink}" style="color: #3b82f6; font-size: 14px;">${setupLink}</a>
+              <p style="margin: 12px 0 0; word-break: break-all; text-align: center;">
+                <a href="${setupLink}" style="color: #06B6D4; font-size: 14px;">${setupLink}</a>
               </p>
-              
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 32px 0;">
-              
-              <p style="margin: 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                This invitation link will expire in 24 hours. If you didn't expect this invitation, you can safely ignore this email.
-              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 32px 40px; background-color: rgba(0, 0, 0, 0.3); border-top: 1px solid rgba(255, 255, 255, 0.1);">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 8px; color: #71717a; font-size: 12px;">
+                      This invitation link will expire in 24 hours.
+                    </p>
+                    <p style="margin: 0 0 16px; color: #52525b; font-size: 11px;">
+                      If you didn't expect this invitation, you can safely ignore this email.
+                    </p>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.05);">
+                      <p style="margin: 0 0 4px; color: #a1a1aa; font-size: 13px; font-weight: 600;">
+                        🎙️ VOICE AI SmartFlow Automation
+                      </p>
+                      <p style="margin: 0; color: #71717a; font-size: 11px;">
+                        Intelligent Voice Solutions
+                      </p>
+                      <p style="margin: 8px 0 0; color: #52525b; font-size: 10px;">
+                        © ${new Date().getFullYear()} VOICE AI SmartFlow Automation. All rights reserved.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>
@@ -82,10 +114,17 @@ async function sendInvitationEmail(email: string, role: string, setupLink: strin
   </table>
 </body>
 </html>
-    `;
+  `;
+
+  return { subject, html };
+}
+
+async function sendInvitationEmail(email: string, role: string, setupLink: string, isNewUser: boolean) {
+  try {
+    const { subject, html } = getEmailTemplate(role, setupLink, isNewUser);
 
     const { error } = await resend.emails.send({
-      from: "Team Invitation <onboarding@resend.dev>",
+      from: "VOICE AI SmartFlow Automation <notifications@mail.smartflowautomation.io>",
       to: [email],
       subject: subject,
       html: html,
