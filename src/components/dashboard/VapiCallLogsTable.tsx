@@ -22,10 +22,17 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
   const itemsPerPage = 10;
   const isMobile = useIsMobile();
 
-  const totalPages = Math.ceil(calls.length / itemsPerPage);
+  // Sort calls by date descending (most recent first)
+  const sortedCalls = [...calls].sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    return dateB - dateA;
+  });
+
+  const totalPages = Math.ceil(sortedCalls.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCalls = calls.slice(startIndex, endIndex);
+  const currentCalls = sortedCalls.slice(startIndex, endIndex);
 
   const getStatusBadge = (status: string, endedReason?: string) => {
     if (status === "ended") {
