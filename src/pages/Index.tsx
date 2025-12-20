@@ -11,7 +11,7 @@ import CallStatisticsChart from "@/components/dashboard/CallStatisticsChart";
 import CostBreakdownWidget from "@/components/dashboard/CostBreakdownWidget";
 import PerformanceTrendsChart from "@/components/dashboard/PerformanceTrendsChart";
 import VapiCallLogsTable from "@/components/dashboard/VapiCallLogsTable";
-import VapiConnectionStatus from "@/components/dashboard/VapiConnectionStatus";
+
 import CallFilters, { CallFilterOptions } from "@/components/dashboard/CallFilters";
 import RealTimeCallMonitor from "@/components/dashboard/RealTimeCallMonitor";
 import DetailedAnalytics from "@/components/dashboard/DetailedAnalytics";
@@ -102,13 +102,6 @@ const Index = () => {
                   {canMakeCalls && <MakeCallDialog />}
                 </div>
               </div>
-              
-              {/* Connection Status */}
-              <VapiConnectionStatus 
-                onRefresh={handleRefresh}
-                lastUpdated={lastUpdated}
-                isRefreshing={isLoading}
-              />
             </div>
 
             {/* Dashboard Content */}
