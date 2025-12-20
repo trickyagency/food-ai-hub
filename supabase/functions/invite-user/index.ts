@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
     const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     let userId: string;
-    const redirectUrl = `${req.headers.get('origin') || 'https://undppzthskqsikywqvwn.lovable.app'}/auth?mode=setup`;
+    const redirectUrl = `https://voiceai.smartflowautomation.io/auth?mode=setup`;
 
     if (existingUser) {
       console.log(`User ${email} already exists with ID: ${existingUser.id}`);
