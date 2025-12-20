@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Phone, Clock, DollarSign, MessageSquare, Volume2, Download, FileText } from "lucide-react";
 import CallTagManager from "./CallTagManager";
 import { formatDuration } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface CallDetailDialogProps {
   call: VapiCall;
@@ -21,6 +22,8 @@ interface CallDetailDialogProps {
 }
 
 const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
+  const { canViewCosts } = useUserRole();
+  
   const getCallTypeLabel = (type: string) => {
     const types: Record<string, string> = {
       inboundPhoneCall: "Inbound Call",
@@ -132,8 +135,8 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
 
           <Separator />
 
-          {/* Cost Breakdown */}
-          {(call.costBreakdown || call.cost !== undefined) && (
+          {/* Cost Breakdown - Only visible to owners */}
+          {canViewCosts && (call.costBreakdown || call.cost !== undefined) && (
             <>
               <div className="space-y-4">
                 <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
@@ -160,7 +163,7 @@ const CallDetailDialog = ({ call, open, onClose }: CallDetailDialogProps) => {
                     </p>
                   </div>
                   <div className="p-3 bg-muted rounded-lg">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Vapi Platform</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Platform</p>
                     <p className="text-base sm:text-lg font-bold">
                       ${(call.costBreakdown?.vapi ?? 0).toFixed(4)}
                     </p>

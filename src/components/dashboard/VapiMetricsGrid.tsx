@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Phone, Clock, DollarSign, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { VapiAnalytics } from "@/hooks/useVapiAnalytics";
 import { getDurationBreakdown } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface VapiMetricsGridProps {
   analytics: VapiAnalytics;
@@ -10,9 +11,10 @@ interface VapiMetricsGridProps {
 }
 
 const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
+  const { canViewCosts } = useUserRole();
   const duration = getDurationBreakdown(analytics.totalMinutes);
   
-  const metrics = [
+  const allMetrics = [
     {
       title: "Total Calls",
       value: analytics.totalCalls.toLocaleString(),
@@ -20,6 +22,7 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
       trend: analytics.trends.callsChange,
       color: "text-blue-600 dark:text-blue-400",
       bgColor: "bg-blue-100 dark:bg-blue-950/30",
+      requiresCostView: false,
     },
     {
       title: "Total Cost",
@@ -28,6 +31,7 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
       trend: analytics.trends.costChange,
       color: "text-green-600 dark:text-green-400",
       bgColor: "bg-green-100 dark:bg-green-950/30",
+      requiresCostView: true,
     },
     {
       title: "Success Rate",
@@ -36,8 +40,12 @@ const VapiMetricsGrid = ({ analytics, loading }: VapiMetricsGridProps) => {
       trend: 2.1,
       color: "text-orange-600 dark:text-orange-400",
       bgColor: "bg-orange-100 dark:bg-orange-950/30",
+      requiresCostView: false,
     },
   ];
+  
+  // Filter out cost-related metrics for non-owners
+  const metrics = allMetrics.filter(m => !m.requiresCostView || canViewCosts);
 
   if (loading) {
     return (
