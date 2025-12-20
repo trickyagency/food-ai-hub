@@ -24,7 +24,7 @@ const FileSyncButton = ({ fileId, fileName, onSyncComplete }: FileSyncButtonProp
 
       if (error) throw error;
 
-      toast.success(`${fileName} uploaded to Vapi successfully!`);
+      toast.success(`${fileName} synced successfully!`);
       console.log("Upload result:", data);
       
       if (onSyncComplete) {
@@ -32,7 +32,7 @@ const FileSyncButton = ({ fileId, fileName, onSyncComplete }: FileSyncButtonProp
       }
     } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error(error.message || "Failed to upload file to Vapi");
+      toast.error(error.message || "Failed to sync file");
     } finally {
       setUploading(false);
     }
@@ -54,7 +54,7 @@ const FileSyncButton = ({ fileId, fileName, onSyncComplete }: FileSyncButtonProp
       ) : (
         <>
           <Upload className="w-4 h-4" />
-          Sync to Vapi
+          Sync to AI
         </>
       )}
     </Button>

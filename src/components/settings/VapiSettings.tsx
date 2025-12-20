@@ -19,9 +19,9 @@ const VapiSettings = () => {
               <Phone className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-2xl">Vapi Connection</CardTitle>
+              <CardTitle className="text-2xl">Voice AI Connection</CardTitle>
               <CardDescription>
-                Manage your Vapi API integration for Voice AI Calling Agent
+                Manage your Voice AI service integration
               </CardDescription>
             </div>
           </div>
@@ -32,7 +32,7 @@ const VapiSettings = () => {
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">Connection Status</p>
                 <p className="text-xs text-muted-foreground">
-                  Test your connection to the Vapi API
+                  Test your connection to the AI service
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -82,19 +82,19 @@ const VapiSettings = () => {
                     API Key Configured
                   </p>
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Your Vapi API key is securely stored in Supabase secrets and ready to use.
-                    The dashboard will automatically fetch live data from your Vapi account.
+                    Your API key is securely stored and ready to use.
+                    The dashboard will automatically fetch live data from your account.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-foreground">About Vapi Integration</h4>
+              <h4 className="text-sm font-semibold text-foreground">About Voice AI Integration</h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Vapi is a Voice AI platform that powers your calling agent. This dashboard
-                connects to your Vapi account to display real-time call analytics, costs,
-                and performance metrics. All API calls are authenticated and secure.
+                The Voice AI platform powers your calling agent. This dashboard
+                displays real-time call analytics, costs, and performance metrics.
+                All API calls are authenticated and secure.
               </p>
             </div>
           </div>

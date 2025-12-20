@@ -34,7 +34,7 @@ const VapiConnectionStatus = ({ onRefresh, lastUpdated, isRefreshing }: VapiConn
     <div className="flex flex-wrap items-center gap-4 p-4 bg-card border border-border/50 rounded-lg shadow-sm">
       <Badge variant="default" className="gap-2 bg-green-500 hover:bg-green-600">
         <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-        Connected to Vapi
+        System Connected
       </Badge>
       
       {lastUpdated && (

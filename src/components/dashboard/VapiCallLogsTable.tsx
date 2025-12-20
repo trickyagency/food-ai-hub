@@ -103,7 +103,7 @@ const VapiCallLogsTable = ({ calls, loading }: VapiCallLogsTableProps) => {
                 ) : currentCalls.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No calls found. Make some calls using Vapi to see them here.
+                      No calls found. Make some calls to see them here.
                     </TableCell>
                   </TableRow>
                 ) : (
