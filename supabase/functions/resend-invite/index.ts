@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     }
 
     // Generate recovery link
-    const appUrl = req.headers.get("origin") || "https://undppzthskqsikywqvwn.lovable.app";
+    const appUrl = "https://voiceai.smartflowautomation.io";
     const setupUrl = `${appUrl}/auth?mode=setup`;
 
     const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
