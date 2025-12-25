@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Database, FileText, Plus, Trash2, Loader2, CheckCircle2, BrainCircuit } from "lucide-react";
+import { Database, FileText, Plus, Trash2, Loader2, CheckCircle2, BrainCircuit, RefreshCw, Eye, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface VapiFile {
@@ -29,6 +29,34 @@ interface KnowledgeBase {
   user_id: string;
 }
 
+interface ToolInfo {
+  id: string;
+  type: string;
+  functionName?: string;
+  knowledgeBases?: Array<{
+    name: string;
+    fileIds: string[];
+  }>;
+  createdAt?: string;
+  error?: string;
+}
+
+interface AssistantInfo {
+  assistant: {
+    id: string;
+    name: string;
+    model: string;
+  };
+  toolIds: string[];
+  tools: ToolInfo[];
+  queryTools: ToolInfo[];
+  knowledgeBaseFiles: Array<{
+    toolId: string;
+    fileId: string;
+    kbName: string;
+  }>;
+}
+
 // Hardcoded Riley assistant
 const RILEY_ASSISTANT_ID = "d9f41449-6376-40fe-b7e7-9d51f87be464";
 
@@ -39,10 +67,13 @@ const KnowledgeBaseManager = () => {
   const [files, setFiles] = useState<VapiFile[]>([]);
   const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeBase | null>(null);
   const [assistantName, setAssistantName] = useState<string>("Riley");
+  const [assistantInfo, setAssistantInfo] = useState<AssistantInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [fetchingInfo, setFetchingInfo] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [fileToRemove, setFileToRemove] = useState<VapiFile | null>(null);
+  const [showToolDetails, setShowToolDetails] = useState(false);
 
   const fetchData = async () => {
     if (!user) return;
@@ -181,6 +212,37 @@ const KnowledgeBaseManager = () => {
       setSyncing(false);
       setRemoveDialogOpen(false);
       setFileToRemove(null);
+    }
+  };
+
+  const fetchAssistantInfo = async () => {
+    try {
+      setFetchingInfo(true);
+      const { data, error } = await invokeWithRetry("vapi-assistant-info", {
+        body: {
+          assistantId: RILEY_ASSISTANT_ID,
+        },
+      });
+
+      if (error) throw error;
+
+      console.log("Assistant info:", data);
+      setAssistantInfo(data);
+      setShowToolDetails(true);
+
+      toast({
+        title: "Success",
+        description: "Fetched current assistant state from Vapi",
+      });
+    } catch (error: any) {
+      console.error("Error fetching assistant info:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch assistant info",
+        variant: "destructive",
+      });
+    } finally {
+      setFetchingInfo(false);
     }
   };
 
@@ -352,13 +414,30 @@ const KnowledgeBaseManager = () => {
         {/* Knowledge Base Assistant */}
         <Card className="border-border/50 shadow-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BrainCircuit className="w-5 h-5" />
-              Knowledge Base Assistant
-            </CardTitle>
-            <CardDescription>
-              This knowledge base is used by the {assistantName} assistant
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <BrainCircuit className="w-5 h-5" />
+                  Knowledge Base Assistant
+                </CardTitle>
+                <CardDescription>
+                  This knowledge base is used by the {assistantName} assistant
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchAssistantInfo}
+                disabled={fetchingInfo}
+              >
+                {fetchingInfo ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Eye className="w-4 h-4 mr-2" />
+                )}
+                View Current State
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg bg-muted/30">
@@ -371,6 +450,95 @@ const KnowledgeBaseManager = () => {
                 Active
               </Badge>
             </div>
+
+            {/* Tool Details Section */}
+            {showToolDetails && assistantInfo && (
+              <div className="space-y-4 border-t border-border/50 pt-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Current Vapi Configuration</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowToolDetails(false)}
+                  >
+                    Hide Details
+                  </Button>
+                </div>
+
+                {/* Query Tools Summary */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Query Tools:</span>
+                    <Badge variant={assistantInfo.queryTools.length === 1 ? "default" : "destructive"}>
+                      {assistantInfo.queryTools.length}
+                    </Badge>
+                    {assistantInfo.queryTools.length > 1 && (
+                      <span className="text-xs text-destructive flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Duplicate tools detected
+                      </span>
+                    )}
+                    {assistantInfo.queryTools.length === 1 && (
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Clean configuration
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tool List */}
+                {assistantInfo.queryTools.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-muted-foreground">Knowledge Base Tools:</span>
+                    {assistantInfo.queryTools.map((tool, index) => (
+                      <div 
+                        key={tool.id} 
+                        className="p-3 rounded-lg border border-border/50 bg-muted/20 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono">{tool.id}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {tool.type}
+                          </Badge>
+                        </div>
+                        {tool.knowledgeBases && tool.knowledgeBases.length > 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            <span>Files: </span>
+                            {tool.knowledgeBases.map(kb => kb.fileIds?.length || 0).reduce((a, b) => a + b, 0)} attached
+                          </div>
+                        )}
+                        {tool.createdAt && (
+                          <div className="text-xs text-muted-foreground">
+                            Created: {new Date(tool.createdAt).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* All File IDs in KB */}
+                {assistantInfo.knowledgeBaseFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-muted-foreground">Files in Vapi KB:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {assistantInfo.knowledgeBaseFiles.map((file, index) => (
+                        <Badge key={index} variant="secondary" className="text-xs font-mono">
+                          {file.fileId.substring(0, 8)}...
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {assistantInfo.queryTools.length === 0 && (
+                  <div className="text-sm text-muted-foreground text-center py-4">
+                    No knowledge base tools attached to this assistant
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 

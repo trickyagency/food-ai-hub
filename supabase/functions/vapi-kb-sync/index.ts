@@ -80,9 +80,88 @@ serve(async (req) => {
 
     if (kbCheckError) throw kbCheckError;
 
-    // Step 1: Create a Query Tool via the /tool endpoint
-    // This is the correct Vapi approach - tools are created separately then attached
-    console.log("Creating query tool with knowledge base files...");
+    // Step 0: Get the current assistant's tool IDs and remove any existing KB query tools
+    console.log("Fetching current assistant configuration to clean up old tools...");
+    
+    const getAssistantResponse = await fetch(
+      `https://api.vapi.ai/assistant/${assistantId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${vapiApiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!getAssistantResponse.ok) {
+      const errorText = await getAssistantResponse.text();
+      throw new Error(`Failed to get assistant: ${getAssistantResponse.status} - ${errorText}`);
+    }
+
+    const currentAssistantData = await getAssistantResponse.json();
+    const currentToolIds = currentAssistantData.model?.toolIds || [];
+    console.log("Current tool IDs on assistant:", currentToolIds);
+
+    // Identify and delete old query tools (KB tools)
+    const oldQueryToolIds: string[] = [];
+    for (const toolId of currentToolIds) {
+      try {
+        const toolResponse = await fetch(
+          `https://api.vapi.ai/tool/${toolId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${vapiApiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (toolResponse.ok) {
+          const toolData = await toolResponse.json();
+          // Check if this is a query tool (knowledge base tool)
+          if (toolData.type === "query" && toolData.function?.name === "searchKnowledgeBase") {
+            oldQueryToolIds.push(toolId);
+            console.log(`Found old KB query tool to remove: ${toolId}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking tool ${toolId}:`, error);
+      }
+    }
+
+    // Delete old query tools from Vapi
+    for (const oldToolId of oldQueryToolIds) {
+      try {
+        console.log(`Deleting old query tool: ${oldToolId}`);
+        const deleteResponse = await fetch(
+          `https://api.vapi.ai/tool/${oldToolId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${vapiApiKey}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        
+        if (deleteResponse.ok) {
+          console.log(`Successfully deleted old tool: ${oldToolId}`);
+        } else {
+          console.log(`Failed to delete old tool ${oldToolId}: ${deleteResponse.status}`);
+        }
+      } catch (error) {
+        console.error(`Error deleting old tool ${oldToolId}:`, error);
+      }
+    }
+
+    // Filter out the old query tools from the current tool IDs
+    const remainingToolIds = currentToolIds.filter((id: string) => !oldQueryToolIds.includes(id));
+    console.log("Remaining tool IDs after cleanup:", remainingToolIds);
+
+    // Step 1: Create a new Query Tool via the /tool endpoint
+    console.log("Creating new query tool with knowledge base files...");
     
     const createToolResponse = await fetch(
       "https://api.vapi.ai/tool",
@@ -119,39 +198,14 @@ serve(async (req) => {
     const toolId = toolData.id;
     console.log("Created query tool with ID:", toolId);
 
-    // Step 2: Get the current assistant configuration
-    console.log("Fetching assistant configuration:", assistantId);
-    
-    const getAssistantResponse = await fetch(
-      `https://api.vapi.ai/assistant/${assistantId}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${vapiApiKey}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (!getAssistantResponse.ok) {
-      const errorText = await getAssistantResponse.text();
-      throw new Error(`Failed to get assistant: ${getAssistantResponse.status} - ${errorText}`);
-    }
-
-    const assistantData = await getAssistantResponse.json();
-    console.log("Current assistant model:", assistantData.model?.model);
-    
-    // Get existing toolIds and add the new one
-    const existingToolIds = assistantData.model?.toolIds || [];
-    
-    // Remove any existing KB query tools to avoid duplicates (we'll add our new one)
-    // For now, just add our new tool ID
-    const updatedToolIds = [...new Set([...existingToolIds, toolId])];
+    // Step 2: Update the assistant's model with the new tool ID
+    // Use the remainingToolIds from cleanup + new tool ID
+    const updatedToolIds = [...remainingToolIds, toolId];
 
     // Step 3: Update the assistant's model with the new tool ID
     // IMPORTANT: We need to include the entire model object when patching
     const modelUpdate = {
-      ...assistantData.model,
+      ...currentAssistantData.model,
       toolIds: updatedToolIds
     };
 
