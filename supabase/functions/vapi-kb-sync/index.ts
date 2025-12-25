@@ -80,11 +80,48 @@ serve(async (req) => {
 
     if (kbCheckError) throw kbCheckError;
 
-    // Update the assistant to include a query tool with these files
-    // This is the new approach since canonical KB was deprecated on Dec 5, 2024
-    console.log("Updating assistant with query tool for files:", assistantId);
+    // Step 1: Create a Query Tool via the /tool endpoint
+    // This is the correct Vapi approach - tools are created separately then attached
+    console.log("Creating query tool with knowledge base files...");
     
-    // First, get the current assistant configuration
+    const createToolResponse = await fetch(
+      "https://api.vapi.ai/tool",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${vapiApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "query",
+          function: {
+            name: "searchKnowledgeBase"
+          },
+          knowledgeBases: [
+            {
+              provider: "google",
+              name: "restaurant-kb",
+              description: "Contains restaurant menu, specials, hours, policies, and other business information to answer customer questions",
+              fileIds: vapiFileIds
+            }
+          ]
+        }),
+      }
+    );
+
+    if (!createToolResponse.ok) {
+      const errorText = await createToolResponse.text();
+      console.error("Failed to create tool:", createToolResponse.status, errorText);
+      throw new Error(`Failed to create query tool: ${createToolResponse.status} - ${errorText}`);
+    }
+
+    const toolData = await createToolResponse.json();
+    const toolId = toolData.id;
+    console.log("Created query tool with ID:", toolId);
+
+    // Step 2: Get the current assistant configuration
+    console.log("Fetching assistant configuration:", assistantId);
+    
     const getAssistantResponse = await fetch(
       `https://api.vapi.ai/assistant/${assistantId}`,
       {
@@ -102,38 +139,24 @@ serve(async (req) => {
     }
 
     const assistantData = await getAssistantResponse.json();
-    console.log("Current assistant has tools:", assistantData.tools?.length || 0);
+    console.log("Current assistant model:", assistantData.model?.model);
+    
+    // Get existing toolIds and add the new one
+    const existingToolIds = assistantData.model?.toolIds || [];
+    
+    // Remove any existing KB query tools to avoid duplicates (we'll add our new one)
+    // For now, just add our new tool ID
+    const updatedToolIds = [...new Set([...existingToolIds, toolId])];
 
-    // Create a query tool configuration with the file IDs
-    const queryTool = {
-      type: "query",
-      function: {
-        name: "searchKnowledgeBase",
-        description: "Search the knowledge base for relevant information to answer user questions about the restaurant menu, specials, hours, and policies.",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "The search query to find relevant information"
-            }
-          },
-          required: ["query"]
-        }
-      },
-      fileIds: vapiFileIds
+    // Step 3: Update the assistant's model with the new tool ID
+    // IMPORTANT: We need to include the entire model object when patching
+    const modelUpdate = {
+      ...assistantData.model,
+      toolIds: updatedToolIds
     };
 
-    // Filter out any existing query tools with the same name, keep other tools
-    const existingTools = assistantData.tools || [];
-    const otherTools = existingTools.filter((tool: any) => 
-      !(tool.type === "query" && tool.function?.name === "searchKnowledgeBase")
-    );
+    console.log("Updating assistant with tool IDs:", updatedToolIds);
 
-    // Add the new query tool
-    const updatedTools = [...otherTools, queryTool];
-
-    // Update assistant with the query tool
     const updateAssistantResponse = await fetch(
       `https://api.vapi.ai/assistant/${assistantId}`,
       {
@@ -143,7 +166,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tools: updatedTools,
+          model: modelUpdate,
         }),
       }
     );
@@ -153,15 +176,16 @@ serve(async (req) => {
       throw new Error(`Failed to update assistant: ${updateAssistantResponse.status} - ${errorText}`);
     }
 
-    console.log("Successfully updated assistant with query tool");
+    console.log("Successfully attached query tool to assistant");
 
-    // Update our database to track the files
+    // Update our database to track the files and tool ID
     if (existingKB) {
       const { error: updateError } = await supabase
         .from("vapi_knowledge_bases")
         .update({
           file_ids: fileIds,
           assistant_id: assistantId,
+          vapi_kb_id: toolId, // Store the tool ID for reference
           status: "active",
           updated_at: new Date().toISOString(),
         })
@@ -175,6 +199,7 @@ serve(async (req) => {
           name: "Global Knowledge Base",
           file_ids: fileIds,
           assistant_id: assistantId,
+          vapi_kb_id: toolId, // Store the tool ID for reference
           status: "active",
           user_id: user.id,
         });
@@ -185,7 +210,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Files attached to assistant successfully via query tool",
+        message: "Knowledge base query tool created and attached to assistant",
+        toolId: toolId,
         fileCount: vapiFileIds.length,
       }),
       {
