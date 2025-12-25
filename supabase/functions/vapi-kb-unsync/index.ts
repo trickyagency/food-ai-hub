@@ -34,10 +34,12 @@ Deno.serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { knowledgeBaseId, vapiFileId } = await req.json();
+    // Accept both fileId (from frontend) and vapiFileId (legacy)
+    const { knowledgeBaseId, fileId, vapiFileId } = await req.json();
+    const targetFileId = fileId || vapiFileId;
 
-    if (!knowledgeBaseId || !vapiFileId) {
-      throw new Error('knowledgeBaseId and vapiFileId are required');
+    if (!knowledgeBaseId || !targetFileId) {
+      throw new Error('knowledgeBaseId and fileId are required');
     }
 
     const VAPI_API_KEY = Deno.env.get('VAPI_API_KEY');
@@ -45,72 +47,180 @@ Deno.serve(async (req) => {
       throw new Error('VAPI_API_KEY not configured');
     }
 
-    console.log('Unsyncing file from knowledge base:', { knowledgeBaseId, vapiFileId });
+    console.log('Unsyncing file from knowledge base:', { knowledgeBaseId, targetFileId });
 
-    // Get current knowledge base
+    // Get current knowledge base record
     const { data: kb, error: kbError } = await supabaseClient
       .from('vapi_knowledge_bases')
       .select('*')
       .eq('id', knowledgeBaseId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (kbError || !kb) {
+    if (kbError) throw kbError;
+    if (!kb) {
       throw new Error('Knowledge base not found');
     }
 
     // Remove the file from file_ids array
     const currentFileIds = kb.file_ids || [];
-    const updatedFileIds = currentFileIds.filter((id: string) => id !== vapiFileId);
+    const updatedFileIds = currentFileIds.filter((id: string) => id !== targetFileId);
 
-    console.log('Recreating Vapi knowledge base with remaining files:', updatedFileIds);
+    console.log('Remaining file IDs after removal:', updatedFileIds);
 
-    // Delete old knowledge base from Vapi
-    const deleteResponse = await fetch(`https://api.vapi.ai/knowledge-base/${kb.vapi_kb_id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${VAPI_API_KEY}`,
-      },
-    });
+    // Get Vapi file IDs for remaining files
+    let vapiFileIds: string[] = [];
+    if (updatedFileIds.length > 0) {
+      const { data: vapiFilesData, error: filesError } = await supabaseClient
+        .from('vapi_files')
+        .select('vapi_file_id')
+        .in('id', updatedFileIds)
+        .eq('user_id', user.id);
 
-    if (!deleteResponse.ok) {
-      console.warn('Failed to delete old knowledge base, continuing:', deleteResponse.status);
+      if (filesError) throw filesError;
+
+      vapiFileIds = vapiFilesData
+        .map((f) => f.vapi_file_id)
+        .filter((id): id is string => id !== null);
     }
 
-    let newKbId = null;
+    // Delete the old query tool if it exists
+    if (kb.vapi_kb_id) {
+      console.log('Deleting old query tool:', kb.vapi_kb_id);
+      const deleteResponse = await fetch(`https://api.vapi.ai/tool/${kb.vapi_kb_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${VAPI_API_KEY}`,
+        },
+      });
 
-    // Only create new knowledge base if there are files remaining
-    if (updatedFileIds.length > 0) {
-      const createResponse = await fetch('https://api.vapi.ai/knowledge-base', {
+      if (!deleteResponse.ok) {
+        console.warn('Failed to delete old query tool, continuing:', deleteResponse.status);
+      }
+    }
+
+    let newToolId = null;
+
+    // Only create new query tool if there are files remaining
+    if (vapiFileIds.length > 0) {
+      console.log('Creating new query tool with remaining files:', vapiFileIds);
+      
+      const createToolResponse = await fetch('https://api.vapi.ai/tool', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${VAPI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          provider: 'canonical',
-          fileIds: updatedFileIds,
+          type: 'query',
+          function: {
+            name: 'searchKnowledgeBase'
+          },
+          knowledgeBases: [
+            {
+              provider: 'google',
+              name: 'restaurant-kb',
+              description: 'Contains restaurant menu, specials, hours, policies, and other business information',
+              fileIds: vapiFileIds
+            }
+          ]
         }),
       });
 
-      if (!createResponse.ok) {
-        const errorText = await createResponse.text();
-        throw new Error(`Failed to create new knowledge base in Vapi: ${createResponse.status} - ${errorText}`);
+      if (!createToolResponse.ok) {
+        const errorText = await createToolResponse.text();
+        throw new Error(`Failed to create new query tool: ${createToolResponse.status} - ${errorText}`);
       }
 
-      const kbData = await createResponse.json();
-      newKbId = kbData.id;
-      console.log('New knowledge base created:', newKbId);
+      const toolData = await createToolResponse.json();
+      newToolId = toolData.id;
+      console.log('New query tool created:', newToolId);
+
+      // Update assistant with new tool ID
+      if (kb.assistant_id) {
+        // Get current assistant
+        const getAssistantResponse = await fetch(
+          `https://api.vapi.ai/assistant/${kb.assistant_id}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${VAPI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (getAssistantResponse.ok) {
+          const assistantData = await getAssistantResponse.json();
+          
+          // Replace old tool ID with new one
+          const existingToolIds = assistantData.model?.toolIds || [];
+          const filteredToolIds = existingToolIds.filter((id: string) => id !== kb.vapi_kb_id);
+          const updatedToolIds = [...filteredToolIds, newToolId];
+
+          const modelUpdate = {
+            ...assistantData.model,
+            toolIds: updatedToolIds
+          };
+
+          await fetch(`https://api.vapi.ai/assistant/${kb.assistant_id}`, {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${VAPI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ model: modelUpdate }),
+          });
+
+          console.log('Updated assistant with new tool ID');
+        }
+      }
     } else {
-      console.log('No files remaining, knowledge base will be marked as empty');
+      console.log('No files remaining, removing tool from assistant');
+      
+      // Remove old tool from assistant
+      if (kb.assistant_id && kb.vapi_kb_id) {
+        const getAssistantResponse = await fetch(
+          `https://api.vapi.ai/assistant/${kb.assistant_id}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${VAPI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (getAssistantResponse.ok) {
+          const assistantData = await getAssistantResponse.json();
+          const existingToolIds = assistantData.model?.toolIds || [];
+          const updatedToolIds = existingToolIds.filter((id: string) => id !== kb.vapi_kb_id);
+
+          const modelUpdate = {
+            ...assistantData.model,
+            toolIds: updatedToolIds
+          };
+
+          await fetch(`https://api.vapi.ai/assistant/${kb.assistant_id}`, {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${VAPI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ model: modelUpdate }),
+          });
+
+          console.log('Removed tool from assistant');
+        }
+      }
     }
 
-    // Update in database
+    // Update database
     if (updatedFileIds.length > 0) {
       const { error: updateError } = await supabaseClient
         .from('vapi_knowledge_bases')
         .update({
-          vapi_kb_id: newKbId,
+          vapi_kb_id: newToolId,
           file_ids: updatedFileIds,
           updated_at: new Date().toISOString(),
         })
