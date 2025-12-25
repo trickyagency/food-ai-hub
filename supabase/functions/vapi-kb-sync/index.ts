@@ -41,10 +41,14 @@ serve(async (req) => {
 
     const { knowledgeBaseName, assistantId, fileIds } = await req.json();
 
-    console.log("Syncing KB:", { knowledgeBaseName, assistantId, fileIds });
+    console.log("Syncing files to assistant:", { knowledgeBaseName, assistantId, fileIds });
 
-    if (!knowledgeBaseName || !fileIds || fileIds.length === 0) {
-      throw new Error("Knowledge base name and file IDs are required");
+    if (!fileIds || fileIds.length === 0) {
+      throw new Error("File IDs are required");
+    }
+
+    if (!assistantId) {
+      throw new Error("Assistant ID is required");
     }
 
     // Get Vapi file IDs from our database
@@ -64,9 +68,9 @@ serve(async (req) => {
       throw new Error("No valid Vapi file IDs found");
     }
 
-    console.log("Vapi file IDs:", vapiFileIds);
+    console.log("Vapi file IDs to attach:", vapiFileIds);
 
-    // Check if global KB exists in our database
+    // Check if KB record exists in our database for tracking
     const { data: existingKB, error: kbCheckError } = await supabase
       .from("vapi_knowledge_bases")
       .select("*")
@@ -76,69 +80,86 @@ serve(async (req) => {
 
     if (kbCheckError) throw kbCheckError;
 
-    let vapiKbId: string;
-    let isUpdate = false;
-
-    if (existingKB && existingKB.vapi_kb_id) {
-      // Update existing KB in Vapi
-      console.log("Updating existing KB:", existingKB.vapi_kb_id);
-      vapiKbId = existingKB.vapi_kb_id;
-      isUpdate = true;
-
-      const updateResponse = await fetch(
-        `https://api.vapi.ai/knowledge-base/${vapiKbId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${vapiApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider: 'canonical',
-            fileIds: vapiFileIds,
-          }),
-        }
-      );
-
-      if (!updateResponse.ok) {
-        const errorText = await updateResponse.text();
-        throw new Error(
-          `Failed to update knowledge base: ${updateResponse.status} - ${errorText}`
-        );
+    // Update the assistant to include a query tool with these files
+    // This is the new approach since canonical KB was deprecated on Dec 5, 2024
+    console.log("Updating assistant with query tool for files:", assistantId);
+    
+    // First, get the current assistant configuration
+    const getAssistantResponse = await fetch(
+      `https://api.vapi.ai/assistant/${assistantId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${vapiApiKey}`,
+          "Content-Type": "application/json",
+        },
       }
-    } else {
-      // Create new KB in Vapi
-      console.log("Creating new KB");
-      const createResponse = await fetch("https://api.vapi.ai/knowledge-base", {
-        method: "POST",
+    );
+
+    if (!getAssistantResponse.ok) {
+      const errorText = await getAssistantResponse.text();
+      throw new Error(`Failed to get assistant: ${getAssistantResponse.status} - ${errorText}`);
+    }
+
+    const assistantData = await getAssistantResponse.json();
+    console.log("Current assistant has tools:", assistantData.tools?.length || 0);
+
+    // Create a query tool configuration with the file IDs
+    const queryTool = {
+      type: "query",
+      function: {
+        name: "searchKnowledgeBase",
+        description: "Search the knowledge base for relevant information to answer user questions about the restaurant menu, specials, hours, and policies.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The search query to find relevant information"
+            }
+          },
+          required: ["query"]
+        }
+      },
+      fileIds: vapiFileIds
+    };
+
+    // Filter out any existing query tools with the same name, keep other tools
+    const existingTools = assistantData.tools || [];
+    const otherTools = existingTools.filter((tool: any) => 
+      !(tool.type === "query" && tool.function?.name === "searchKnowledgeBase")
+    );
+
+    // Add the new query tool
+    const updatedTools = [...otherTools, queryTool];
+
+    // Update assistant with the query tool
+    const updateAssistantResponse = await fetch(
+      `https://api.vapi.ai/assistant/${assistantId}`,
+      {
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${vapiApiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          provider: "canonical",
-          fileIds: vapiFileIds,
+          tools: updatedTools,
         }),
-      });
-
-      if (!createResponse.ok) {
-        const errorText = await createResponse.text();
-        throw new Error(
-          `Failed to create knowledge base: ${createResponse.status} - ${errorText}`
-        );
       }
+    );
 
-      const kbData = await createResponse.json();
-      vapiKbId = kbData.id;
-      console.log("Created KB with ID:", vapiKbId);
+    if (!updateAssistantResponse.ok) {
+      const errorText = await updateAssistantResponse.text();
+      throw new Error(`Failed to update assistant: ${updateAssistantResponse.status} - ${errorText}`);
     }
 
-    // Update our database
+    console.log("Successfully updated assistant with query tool");
+
+    // Update our database to track the files
     if (existingKB) {
       const { error: updateError } = await supabase
         .from("vapi_knowledge_bases")
         .update({
-          vapi_kb_id: vapiKbId,
           file_ids: fileIds,
           assistant_id: assistantId,
           status: "active",
@@ -152,7 +173,6 @@ serve(async (req) => {
         .from("vapi_knowledge_bases")
         .insert({
           name: "Global Knowledge Base",
-          vapi_kb_id: vapiKbId,
           file_ids: fileIds,
           assistant_id: assistantId,
           status: "active",
@@ -162,43 +182,11 @@ serve(async (req) => {
       if (insertError) throw insertError;
     }
 
-    // If assistant is provided, update the assistant in Vapi to use this KB
-    if (assistantId) {
-      console.log("Attaching KB to assistant:", assistantId);
-      
-      const assistantUpdateResponse = await fetch(
-        `https://api.vapi.ai/assistant/${assistantId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${vapiApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            knowledgeBase: {
-              provider: "canonical",
-              id: vapiKbId,
-            },
-          }),
-        }
-      );
-
-      if (!assistantUpdateResponse.ok) {
-        const errorText = await assistantUpdateResponse.text();
-        console.error("Failed to attach KB to assistant:", errorText);
-        // Don't throw here, as the KB was created successfully
-      } else {
-        console.log("Successfully attached KB to assistant");
-      }
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
-        knowledgeBaseId: vapiKbId,
-        message: isUpdate
-          ? "Knowledge base updated successfully"
-          : "Knowledge base created successfully",
+        message: "Files attached to assistant successfully via query tool",
+        fileCount: vapiFileIds.length,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
