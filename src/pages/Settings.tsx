@@ -11,7 +11,7 @@ import EmailNotifications from "@/components/settings/EmailNotifications";
 import UserActivityDashboard from "@/components/settings/UserActivityDashboard";
 import VapiSettings from "@/components/settings/VapiSettings";
 import RolePermissionsSummary from "@/components/settings/RolePermissionsSummary";
-import { OrderCaptureSetup } from "@/components/settings/OrderCaptureSetup";
+
 import { useUserRole } from "@/hooks/useUserRole";
 
 const Settings = () => {
@@ -81,10 +81,7 @@ const Settings = () => {
           </TabsContent>
 
           <TabsContent value="voice-ai">
-            <div className="space-y-6">
-              <VapiSettings />
-              <OrderCaptureSetup />
-            </div>
+            <VapiSettings />
           </TabsContent>
 
           {canManageUsers && (
