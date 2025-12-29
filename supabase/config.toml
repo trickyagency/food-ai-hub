@@ -24,14 +24,17 @@ verify_jwt = true
 [functions.vapi-assistant-info]
 verify_jwt = true
 
+[functions.vapi-create-order-tool]
+verify_jwt = true
+
 [functions.delete-user]
 verify_jwt = true
 
 [functions.twilio-sms]
-verify_jwt = true
+verify_jwt = false
 
 [functions.twilio-sms-completion]
-verify_jwt = true
+verify_jwt = false
 
 [functions.invite-user]
 verify_jwt = true
