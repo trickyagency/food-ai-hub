@@ -1,5 +1,8 @@
 project_id = "undppzthskqsikywqvwn"
 
+[functions.test-order]
+verify_jwt = true
+
 [functions.vapi-proxy]
 verify_jwt = true
 

@@ -4,7 +4,9 @@ import { OrderAnalyticsEnhanced } from "@/components/orders/OrderAnalyticsEnhanc
 import { OrdersTableEnhanced } from "@/components/orders/OrdersTableEnhanced";
 import { OrderExportEnhanced } from "@/components/orders/OrderExportEnhanced";
 import { NewOrderNotifications } from "@/components/orders/NewOrderNotifications";
-import { ShoppingCart, RefreshCw } from "lucide-react";
+import { TestOrderButton } from "@/components/orders/TestOrderButton";
+import { ShoppingCart } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useOrders } from "@/hooks/useOrders";
@@ -13,6 +15,7 @@ import { DateRange } from "react-day-picker";
 
 const Orders = () => {
   const { user } = useAuth();
+  const { role } = useUserRole();
   const { 
     orders, 
     stats, 
@@ -21,6 +24,8 @@ const Orders = () => {
     refreshOrders, 
     updateOrderStatus 
   } = useOrders({ enableRealtime: true });
+  
+  const isAdminOrOwner = role === "admin" || role === "owner";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -90,6 +95,7 @@ const Orders = () => {
                 {stats.todayOrders} today
               </Badge>
             )}
+            {isAdminOrOwner && <TestOrderButton />}
             <OrderExportEnhanced 
               orders={orders} 
               filteredOrders={filteredOrders.length !== orders.length ? filteredOrders : undefined} 
