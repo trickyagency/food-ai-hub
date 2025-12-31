@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 let isRefreshing = false;
 let refreshPromise: Promise<{ success: boolean; session: any }> | null = null;
 let lastRefreshTime = 0;
-const REFRESH_COOLDOWN_MS = 60000; // 60 seconds cooldown between refreshes
+const REFRESH_COOLDOWN_MS = 120000; // 120 seconds cooldown to prevent rate limiting
 
 /**
  * Safely refresh the session with deduplication and cooldown.
@@ -75,8 +75,9 @@ export async function getCurrentSession() {
 
 /**
  * Check if token is expiring soon (within threshold seconds)
+ * NOTE: This is rarely needed - Supabase auto-refreshes tokens automatically
  */
-export function isTokenExpiringSoon(session: any, thresholdSeconds: number = 60): boolean {
+export function isTokenExpiringSoon(session: any, thresholdSeconds: number = 30): boolean {
   if (!session?.expires_at) return false; // Don't treat missing expires_at as expiring
   const now = Math.floor(Date.now() / 1000);
   return (session.expires_at - now) < thresholdSeconds;

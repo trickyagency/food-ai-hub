@@ -27,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
   // Silent audit logging that includes user_id and never throws
   const logAuditEvent = async (eventType: string, userId?: string, eventDetails?: any) => {
@@ -102,22 +103,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // Function to manually refresh session with debouncing (useful for retry on 401)
+  // Function to manually refresh session with strict cooldown (useful for retry on 401)
   const refreshSession = useCallback(async (): Promise<boolean> => {
+    const now = Date.now();
+    const COOLDOWN_MS = 120000; // 2 minutes cooldown
+    
+    // Prevent refresh if within cooldown period
+    if (now - lastRefreshTime < COOLDOWN_MS) {
+      console.log('Session refresh on cooldown, skipping...');
+      return !!session; // Return current session validity
+    }
+    
     // Prevent concurrent refresh attempts
     if (isRefreshing) {
       console.log('Session refresh already in progress, skipping...');
-      return false;
+      return !!session;
     }
     
     setIsRefreshing(true);
+    setLastRefreshTime(now);
+    
     try {
       const { data, error } = await supabase.auth.refreshSession();
       if (error || !data.session) {
         console.error('Manual session refresh failed:', error);
-        await supabase.auth.signOut();
-        setSession(null);
-        setUser(null);
+        // Don't sign out on refresh failure - let user continue with current session
         return false;
       }
       setSession(data.session);
@@ -129,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsRefreshing(false);
     }
-  }, [isRefreshing]);
+  }, [isRefreshing, lastRefreshTime, session]);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {

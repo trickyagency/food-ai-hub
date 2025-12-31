@@ -10,33 +10,23 @@ export async function invokeWithRetry<T = any>(
   options?: { body?: Record<string, any>; headers?: Record<string, string> }
 ): Promise<{ data: T | null; error: Error | null }> {
   try {
-    // Get current session
+    // Get current session - don't proactively refresh, let Supabase handle it
     let session = await getCurrentSession();
 
     if (!session) {
       return { data: null, error: new Error("No authenticated session") };
     }
 
-    // Proactively refresh if token is expiring soon (within 60 seconds)
-    if (isTokenExpiringSoon(session, 60)) {
-      console.log("[invokeWithRetry] Token expiring soon, refreshing...");
-      const refreshResult = await safeRefreshSession();
-      if (!refreshResult.success || !refreshResult.session) {
-        return { data: null, error: new Error("Session refresh failed") };
-      }
-      session = refreshResult.session;
-    }
-
-    const buildOptions = () => ({
+    const buildOptions = (currentSession: typeof session) => ({
       ...options,
       headers: {
         ...(options?.headers ?? {}),
-        Authorization: `Bearer ${session.access_token}`,
+        Authorization: `Bearer ${currentSession!.access_token}`,
       },
     });
 
-    // First attempt
-    const first = await supabase.functions.invoke(functionName, buildOptions());
+    // First attempt - use current session as-is
+    const first = await supabase.functions.invoke(functionName, buildOptions(session));
 
     if (first.error) {
       const msg = first.error.message || "";
@@ -46,15 +36,16 @@ export async function invokeWithRetry<T = any>(
         msg.toLowerCase().includes("unauthorized") ||
         msg.toLowerCase().includes("jwt expired");
 
+      // Only refresh on actual auth errors, not preemptively
       if (isAuthError) {
-        console.log("[invokeWithRetry] Auth error, attempting refresh...");
+        console.log("[invokeWithRetry] Auth error, attempting single refresh...");
         const refreshResult = await safeRefreshSession();
         if (!refreshResult.success || !refreshResult.session) {
           return { data: null, error: new Error(first.error.message) };
         }
         session = refreshResult.session;
 
-        const retry = await supabase.functions.invoke(functionName, buildOptions());
+        const retry = await supabase.functions.invoke(functionName, buildOptions(session));
         if (retry.error) {
           return { data: null, error: new Error(retry.error.message) };
         }
@@ -78,19 +69,8 @@ export async function invokeWithRetry<T = any>(
 export async function ensureValidSession(): Promise<boolean> {
   try {
     const session = await getCurrentSession();
-    
-    if (!session) {
-      return false;
-    }
-    
-    // Check if token is expiring soon (within 60 seconds)
-    if (isTokenExpiringSoon(session, 60)) {
-      console.log("[ensureValidSession] Token expiring soon, refreshing...");
-      const result = await safeRefreshSession();
-      return result.success;
-    }
-    
-    return true;
+    // Simply check if session exists - Supabase auto-refreshes tokens
+    return !!session;
   } catch (err) {
     console.error("[ensureValidSession] Error:", err);
     return false;
