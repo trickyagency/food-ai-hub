@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { safeRefreshSession, getCurrentSession, isTokenExpiringSoon } from "./sessionManager";
+import { safeRefreshSession, getCurrentSession, isInLoginGracePeriod } from "./sessionManager";
 
 /**
  * Invokes a Supabase edge function with a guaranteed user JWT (never the anon key).
@@ -37,7 +37,8 @@ export async function invokeWithRetry<T = any>(
         msg.toLowerCase().includes("jwt expired");
 
       // Only refresh on actual auth errors, not preemptively
-      if (isAuthError) {
+      // Skip refresh during login grace period to prevent token storm
+      if (isAuthError && !isInLoginGracePeriod()) {
         console.log("[invokeWithRetry] Auth error, attempting single refresh...");
         const refreshResult = await safeRefreshSession();
         if (!refreshResult.success || !refreshResult.session) {

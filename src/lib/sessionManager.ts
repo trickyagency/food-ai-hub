@@ -6,12 +6,39 @@ let refreshPromise: Promise<{ success: boolean; session: any }> | null = null;
 let lastRefreshTime = 0;
 const REFRESH_COOLDOWN_MS = 120000; // 120 seconds cooldown to prevent rate limiting
 
+// Login grace period - prevents any refresh for 10 seconds after login
+let loginGracePeriodUntil = 0;
+const LOGIN_GRACE_PERIOD_MS = 10000; // 10 seconds
+
+/**
+ * Activate login grace period to prevent token refresh storms after login.
+ * Call this immediately after successful login.
+ */
+export function setLoginGracePeriod(): void {
+  loginGracePeriodUntil = Date.now() + LOGIN_GRACE_PERIOD_MS;
+  console.log('[SessionManager] Login grace period active for 10 seconds');
+}
+
+/**
+ * Check if we're within the login grace period.
+ */
+export function isInLoginGracePeriod(): boolean {
+  return Date.now() < loginGracePeriodUntil;
+}
+
 /**
  * Safely refresh the session with deduplication and cooldown.
  * Prevents rate limiting by enforcing a 60 second cooldown.
  */
 export async function safeRefreshSession(): Promise<{ success: boolean; session: any }> {
   const now = Date.now();
+  
+  // Skip refresh during login grace period to prevent token storm
+  if (isInLoginGracePeriod()) {
+    console.log('[SessionManager] In login grace period, skipping refresh');
+    const { data: { session } } = await supabase.auth.getSession();
+    return { success: !!session, session };
+  }
   
   // Enforce cooldown to prevent rate limiting
   if (now - lastRefreshTime < REFRESH_COOLDOWN_MS) {

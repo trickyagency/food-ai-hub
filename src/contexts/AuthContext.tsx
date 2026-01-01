@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { safeRefreshSession } from '@/lib/sessionManager';
+import { safeRefreshSession, setLoginGracePeriod } from '@/lib/sessionManager';
 
 interface AuthContextType {
   user: User | null;
@@ -154,6 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Immediately set session state to prevent race conditions
       if (data.session) {
+        // Activate grace period BEFORE setting state to prevent refresh storms
+        setLoginGracePeriod();
+        
         setSession(data.session);
         setUser(data.session.user);
         
